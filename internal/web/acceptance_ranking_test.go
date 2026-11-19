@@ -46,6 +46,24 @@ func (a *acceptance) registerRankingSteps(sc *godog.ScenarioContext) {
 		}
 		return nil
 	})
+	sc.Then(`^I can compare "([^"]+)" and "([^"]+)" again$`, func(first, second string) error {
+		picks := a.compareForms()
+		if len(picks) != 2 {
+			return fmt.Errorf("found %d choices after the pick, want 2", len(picks))
+		}
+		for _, title := range []string{first, second} {
+			wish, err := a.findWish(title)
+			if err != nil {
+				return err
+			}
+			if !slices.ContainsFunc(picks, func(form *html.Node) bool {
+				return formValues(form).Get("winner") == wish.ID
+			}) {
+				return fmt.Errorf("cannot pick %q again", title)
+			}
+		}
+		return nil
+	})
 	sc.Given(`^the wishlist order is "([^"]+)"$`, func(order string) error {
 		if err := a.seedWishlist("Alex", "Jul"); err != nil {
 			return err

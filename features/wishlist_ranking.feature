@@ -11,6 +11,10 @@ Feature: Rank wishes by comparing two at a time
     When I open the wishlist
     Then I see both wishes in random left-to-right order
     And I can pick either wish
+    When I pick "LEGO"
+    Then I can compare "Bike" and "LEGO" again
+    When I pick "Bike"
+    Then I can compare "Bike" and "LEGO" again
 
   Scenario: Move a lower-ranked winner immediately above the loser
     Given the wishlist order is "Bike, LEGO, Headphones"

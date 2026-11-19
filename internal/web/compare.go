@@ -74,15 +74,6 @@ func (s server) pick(c fiber.Ctx) error {
 	if err := s.db.Pick(c.Context(), listID, winner, loser); err != nil {
 		return err
 	}
-	if len(next) == 0 {
-		wishes, err := s.db.Wishes(c.Context(), listID)
-		if err != nil {
-			return err
-		}
-		if len(wishes) == 2 {
-			next.Set("done", winner)
-		}
-	}
 	path := "/lists/" + listID
 	if len(next) > 0 {
 		path += "?" + next.Encode()
