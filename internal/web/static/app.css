@@ -398,11 +398,27 @@ main {
 }
 
 .ranked-card .wish-image {
-  align-self: start;
-  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-height: var(--ranked-image-width);
+  aspect-ratio: auto;
+}
+
+.ranked-card .wish-image img {
+  position: absolute;
+  inset: 0;
+}
+
+.ranked-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  max-width: 100%;
 }
 
 .ranked-card h2 {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 
@@ -411,11 +427,9 @@ main {
 }
 
 .rank-number {
-  position: absolute;
-  z-index: 1;
   display: grid;
+  flex: none;
   place-items: center;
-  inset: .6rem auto auto .6rem;
   min-width: 1.85rem;
   min-height: 1.85rem;
   padding-inline: .25rem;
@@ -442,12 +456,12 @@ main {
 
 .purchase-overlay {
   display: flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  position: absolute;
-  inset: 0;
-  padding: .65rem;
+  position: relative;
+  padding: .4rem;
   background: rgb(34 25 50 / 79%);
   color: var(--paper);
   text-align: center;
@@ -461,6 +475,8 @@ main {
 
 .purchase-overlay span {
   max-width: 100%;
+  font-size: clamp(.8rem, 2.8vw, 1rem);
+  line-height: 1.25;
 }
 
 .purchase-control {

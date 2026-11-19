@@ -179,11 +179,10 @@
   {{range .Wishes}}
   <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
     <div class="wish-image">
-      <span class="rank-number" aria-hidden="true">{{.Rank}}</span>
       <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
     </div>
     <div class="wish-copy">
-      <h2>{{.Title}}</h2>
+      <div class="ranked-title"><span class="rank-number" aria-hidden="true">{{.Rank}}</span><h2>{{.Title}}</h2></div>
       {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}
       <a class="text-link" href="/lists/{{.WishlistID}}/wishes/{{.ID}}/edit" aria-label="Ändra {{.Title}}">Ändra</a>
     </div>
@@ -215,14 +214,13 @@
   {{range .Wishes}}
   <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
     <div class="wish-image">
-      <span class="rank-number" aria-hidden="true">{{.Rank}}</span>
       <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
       {{with .Buyer}}
       <div class="purchase-overlay"><strong>Köpt</strong><span>av {{.}}</span></div>
       {{end}}
     </div>
     <div class="wish-copy">
-      <h2>{{.Title}}</h2>
+      <div class="ranked-title"><span class="rank-number" aria-hidden="true">{{.Rank}}</span><h2>{{.Title}}</h2></div>
       {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}
       <form action="/{{$.Wishlist.ShareID}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}" method="get" hx-boost="false">
         <label class="purchase-control">
