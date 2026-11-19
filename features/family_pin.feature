@@ -38,3 +38,13 @@ Feature: Unlock the app with a family PIN
     And I have no controls to add, edit, or rank wishes
     When I open the app home page
     Then the app asks for the family PIN
+
+  Scenario: Update purchase marks on the shared wishlist without a PIN
+    Given I have not unlocked the app in this browser
+    And I have opened the shared wishlist
+    When I mark "LEGO" as bought by "Anna"
+    Then the shared wishlist shows "LEGO" as bought by "Anna" without asking for the PIN
+    When I clear and confirm the purchase mark for "LEGO"
+    Then the shared wishlist shows "LEGO" as available without asking for the PIN
+    When I open the app home page
+    Then the app asks for the family PIN
