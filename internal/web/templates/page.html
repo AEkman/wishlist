@@ -123,7 +123,7 @@
   </div>
 {{else if .Wish.ID}}
   <article class="single-wish">
-    <div class="wish-image"><img src="/images/{{.Wish.ID}}" alt=""></div>
+    <div class="wish-image"><img src="/images/{{.Wish.ID}}?v={{.Wish.ImageRevision}}" alt=""></div>
     <div class="wish-copy">
       <h2>{{.Wish.Title}}</h2>
       {{with .Wish.Description}}<p class="wish-description">{{.}}</p>{{end}}
@@ -150,7 +150,7 @@
 
 {{define "pick-button"}}
 <button type="submit" class="pick-card">
-  <span class="wish-image"><img src="/images/{{.ID}}" alt=""></span>
+  <span class="wish-image"><img src="/images/{{.ID}}?v={{.ImageRevision}}" alt=""></span>
   <span class="wish-copy">
     <span class="pick-title">{{.Title}}</span>
     {{with .Description}}<span class="wish-description">{{.}}</span>{{end}}
@@ -180,7 +180,7 @@
   <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
     <div class="wish-image">
       <span class="rank-number" aria-hidden="true">{{.Rank}}</span>
-      <img src="/images/{{.ID}}" alt="" loading="lazy">
+      <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
     </div>
     <div class="wish-copy">
       <h2>{{.Title}}</h2>
@@ -216,7 +216,7 @@
   <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
     <div class="wish-image">
       <span class="rank-number" aria-hidden="true">{{.Rank}}</span>
-      <img src="/images/{{.ID}}" alt="" loading="lazy">
+      <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
       {{with .Buyer}}
       <div class="purchase-overlay"><strong>Köpt</strong><span>av {{.}}</span></div>
       {{end}}
@@ -252,7 +252,7 @@
 </div>
 <form class="panel-form" action="/lists/{{.Wishlist.ID}}/wishes/{{if eq .View "edit"}}{{.Wish.ID}}/edit{{else}}new{{end}}" method="post" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-push-url="true">
   {{if eq .View "edit"}}
-  <div class="wish-image form-preview"><img src="/images/{{.Wish.ID}}" alt="Nuvarande bild"></div>
+  <div class="wish-image form-preview"><img src="/images/{{.Wish.ID}}?v={{.Wish.ImageRevision}}" alt="Nuvarande bild"></div>
   {{end}}
   <label for="wish-image">{{if eq .View "edit"}}Byt bild (valfritt){{else}}Bild{{end}}</label>
   <input id="wish-image" type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" {{if eq .View "add"}}required{{end}}>

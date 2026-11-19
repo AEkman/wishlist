@@ -8,14 +8,15 @@ import (
 )
 
 type Wish struct {
-	ID          string
-	WishlistID  string
-	Title       string
-	Description string
-	Buyer       string
+	ID            string
+	WishlistID    string
+	Title         string
+	Description   string
+	Buyer         string
+	ImageRevision int
 }
 
-const wishColumns = "id, wishlist_id, title, description, buyer"
+const wishColumns = "id, wishlist_id, title, description, buyer, image_revision"
 
 func (s *Store) UpdateWish(ctx context.Context, wishlistID, wishID, title, description, mediaType string, image []byte) (Wish, error) {
 	title = strings.TrimSpace(title)
@@ -25,7 +26,7 @@ func (s *Store) UpdateWish(ctx context.Context, wishlistID, wishID, title, descr
 	query := "UPDATE wishes SET title = ?, description = ?"
 	args := []any{title, description}
 	if image != nil {
-		query += ", media_type = ?, image = ?"
+		query += ", media_type = ?, image = ?, image_revision = image_revision + 1"
 		args = append(args, mediaType, image)
 	}
 	query += " WHERE wishlist_id = ? AND id = ? RETURNING " + wishColumns
@@ -63,7 +64,7 @@ func (s *Store) Wishes(ctx context.Context, wishlistID string) ([]Wish, error) {
 	var wishes []Wish
 	for rows.Next() {
 		var wish Wish
-		if err := rows.Scan(&wish.ID, &wish.WishlistID, &wish.Title, &wish.Description, &wish.Buyer); err != nil {
+		if err := rows.Scan(&wish.ID, &wish.WishlistID, &wish.Title, &wish.Description, &wish.Buyer, &wish.ImageRevision); err != nil {
 			return nil, err
 		}
 		wishes = append(wishes, wish)
@@ -88,7 +89,7 @@ func (s *Store) Image(ctx context.Context, wishID string) (string, []byte, error
 
 func scanWish(row *sql.Row) (Wish, error) {
 	var wish Wish
-	err := row.Scan(&wish.ID, &wish.WishlistID, &wish.Title, &wish.Description, &wish.Buyer)
+	err := row.Scan(&wish.ID, &wish.WishlistID, &wish.Title, &wish.Description, &wish.Buyer, &wish.ImageRevision)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Wish{}, ErrNotFound
 	}

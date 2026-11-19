@@ -143,10 +143,11 @@ func (u *uploadAcceptance) originalWishIsVisible() error {
 func (u *uploadAcceptance) showsPicture(wishID string, bounds image.Rectangle) error {
 	path := "/images/" + wishID
 	for _, img := range htmlNodes(u.doc, isElement("img")) {
-		if htmlAttr(img, "src") != path {
+		src, err := url.Parse(htmlAttr(img, "src"))
+		if err != nil || src.IsAbs() || src.Host != "" || src.Path != path {
 			continue
 		}
-		if err := u.get(path); err != nil {
+		if err := u.get(src.RequestURI()); err != nil {
 			return err
 		}
 		picture, err := png.Decode(strings.NewReader(u.body))

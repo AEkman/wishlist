@@ -57,11 +57,35 @@ func Open(dsn string) (*Store, error) {
 	}
 	// Keep one connection for the in-memory database and serialize writes.
 	db.SetMaxOpenConns(1)
-	if _, err := db.Exec(schema); err != nil {
+	if err := initialize(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialize wishlist database: %w", err)
 	}
 	return &Store{db: db}, nil
+}
+
+func initialize(db *sql.DB) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(schema); err != nil {
+		return err
+	}
+	var version int
+	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
+		return err
+	}
+	if version == 0 {
+		if _, err := tx.Exec("ALTER TABLE wishes ADD COLUMN image_revision INTEGER NOT NULL DEFAULT 0"); err != nil {
+			return err
+		}
+		if _, err := tx.Exec("PRAGMA user_version = 1"); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *Store) Close() error { return s.db.Close() }

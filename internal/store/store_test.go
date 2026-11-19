@@ -2,11 +2,44 @@ package store
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
 	"path/filepath"
 	"slices"
 	"testing"
 )
+
+func TestOpenUpgradesImagesInExistingWishlists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "wishlist.db")
+	legacy, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = legacy.Close() })
+	if _, err := legacy.ExecContext(t.Context(), schema); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.ExecContext(t.Context(), `
+		INSERT INTO children (id, name) VALUES ('child', 'Alex');
+		INSERT INTO wishlists (id, child_id, title, share_id) VALUES ('list', 'child', 'Jul', 'share');
+		INSERT INTO wishes (id, wishlist_id, title, description, media_type, image, position, buyer)
+		VALUES ('wish', 'list', 'LEGO', '', 'image/png', X'01', 0, 'Anna')
+	`); err != nil {
+		t.Fatal(err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s := openTestStore(t, path)
+	before, err := s.Wish(t.Context(), "list", "wish")
+	if err != nil || before.Buyer != "Anna" || before.ImageRevision != 0 {
+		t.Fatalf("upgraded wish = %+v, %v", before, err)
+	}
+	after, err := s.UpdateWish(t.Context(), "list", "wish", "LEGO", "", "image/png", []byte{2})
+	if err != nil || after.Buyer != "Anna" || after.ImageRevision != 1 {
+		t.Fatalf("updated wish = %+v, %v", after, err)
+	}
+}
 
 func TestWishlistSurvivesReopeningDatabase(t *testing.T) {
 	ctx := t.Context()
