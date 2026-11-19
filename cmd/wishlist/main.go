@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -15,6 +16,9 @@ import (
 )
 
 func main() {
+	if os.Getenv("RANKING_DEBUG") == "1" {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}

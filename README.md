@@ -17,3 +17,5 @@ Anyone who can reach the app can change wishlists until PIN support is available
 Use Go 1.26 or later. Run `go run ./cmd/wishlist` to start the app. Set `LISTEN_ADDR` to change the default address `:8080`. Set `DATABASE_PATH` to change the default SQLite file `wishlists.db`.
 
 Run `go test ./...` or `make test`. Each Godog scenario uses a fresh in-memory SQLite database. See the [acceptance scenarios](features/). The PIN scenarios have the `@wip` tag and are deferred.
+
+To debug comparisons, run `RANKING_DEBUG=1 make start` and follow the output with `make logs`. The log shows the displayed pair, the source of the opponent after an upload, and each item's rank before and after a pick. Run `make start` to return to the default log level.

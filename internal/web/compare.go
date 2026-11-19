@@ -1,6 +1,8 @@
 package web
 
 import (
+	"context"
+	"log/slog"
 	"net/url"
 	"slices"
 	"strconv"
@@ -32,14 +34,29 @@ func (s server) uploadComparison(c fiber.Ctx, data page, wishes []store.Wish, id
 	for i, wish := range wishes {
 		order[i] = wish.ID
 	}
-	opponent := findWishIndex(wishes, uploadOpponent(order, id, c.Query("pivot"), c.Query("higher") == "1", tried, s.draw))
+	opponentID, pool := uploadOpponent(order, id, c.Query("pivot"), c.Query("higher") == "1", tried, s.draw)
+	opponent := findWishIndex(wishes, opponentID)
 	if opponent < 0 {
 		return redirect(c, "/lists/"+data.Wishlist.ID+"?"+url.Values{"done": {id}}.Encode())
 	}
 	data.HasPair, data.Upload = true, true
 	data.Left, data.Right = wishes[index], wishes[opponent]
 	data.Tried, data.Remaining = tried, remaining
+	logPair(c.Context(), data, index+1, opponent+1, pool)
 	return s.show(c, data)
+}
+
+func logPair(ctx context.Context, data page, leftRank, rightRank int, pool string) {
+	mode := "regular"
+	if data.Upload {
+		mode = "upload"
+	}
+	slog.DebugContext(ctx, "ranking_pair",
+		"list_id", data.Wishlist.ID, "mode", mode, "pool", pool,
+		"left", data.Left.Title, "left_rank", leftRank,
+		"right", data.Right.Title, "right_rank", rightRank,
+		"remaining_upload_picks", data.Remaining,
+	)
 }
 
 func (s server) pick(c fiber.Ctx) error {

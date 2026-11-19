@@ -26,18 +26,18 @@ func TestUploadOpponentPrefersDirectionAndFallsBack(t *testing.T) {
 		name, pivot string
 		higher      bool
 		tried       []string
-		want        string
+		want, pool  string
 	}{
-		{name: "first opponent is random", want: "ball"},
-		{name: "choose above the new rank", pivot: "ball", higher: true, tried: []string{"skates"}, want: "lego"},
-		{name: "choose below the winner", pivot: "lego", tried: []string{"lego", "ball"}, want: "skates"},
-		{name: "fall back to an untried opponent", pivot: "ball", tried: []string{"ball"}, want: "skates"},
+		{name: "first opponent is random", want: "ball", pool: "random"},
+		{name: "choose above the new rank", pivot: "ball", higher: true, tried: []string{"skates"}, want: "lego", pool: "higher"},
+		{name: "choose below the winner", pivot: "lego", tried: []string{"lego", "ball"}, want: "skates", pool: "lower"},
+		{name: "fall back to an untried opponent", pivot: "ball", tried: []string{"ball"}, want: "skates", pool: "fallback"},
 		{name: "no opponent remains", tried: []string{"bike", "lego", "skates", "ball"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := uploadOpponent(order, "new", tc.pivot, tc.higher, tc.tried, drawLast)
-			if got != tc.want {
-				t.Fatalf("opponent = %q, want %q", got, tc.want)
+			got, pool := uploadOpponent(order, "new", tc.pivot, tc.higher, tc.tried, drawLast)
+			if got != tc.want || pool != tc.pool {
+				t.Fatalf("opponent = %q from %q, want %q from %q", got, pool, tc.want, tc.pool)
 			}
 		})
 	}
