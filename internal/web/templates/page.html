@@ -1,0 +1,286 @@
+{{define "page"}}
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fcf9f4">
+  <title>{{with .Title}}{{.}} · {{end}}Önskelistan</title>
+  <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"historyCacheSize":0,"historyRestoreAsHxRequest":false,"reportValidityOfForms":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"(400|409|422)","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body hx-boost="true" hx-target="#screen" hx-select="#screen" hx-swap="outerHTML show:top">
+  <a class="skip-link" href="#content" hx-boost="false">Hoppa till innehållet</a>
+  <div id="screen" data-screen="{{.View}}" hx-sync="this:drop">
+    <header class="site-header">
+      {{if or (eq .View "share") (eq .View "purchase") (eq .View "clear")}}
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>Önskelistan</span>
+      {{else}}
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>Önskelistan</a>
+      {{end}}
+    </header>
+    <main id="content" class="screen-motion">
+      {{with .Error}}<p class="notice" role="alert">{{.}}</p>{{end}}
+      {{if eq .View "children"}}{{template "children" .}}
+      {{else if eq .View "lists"}}{{template "lists" .}}
+      {{else if eq .View "compare"}}{{template "compare" .}}
+      {{else if eq .View "ranked"}}{{template "ranked" .}}
+      {{else if eq .View "share"}}{{template "share" .}}
+      {{else if or (eq .View "add") (eq .View "edit")}}{{template "wish-form" .}}
+      {{else if or (eq .View "purchase") (eq .View "clear")}}{{template "purchase-form" .}}
+      {{else}}<h1 tabindex="-1" autofocus>{{.Title}}</h1><a class="button" href="/">Till startsidan</a>
+      {{end}}
+    </main>
+  </div>
+</body>
+</html>
+{{end}}
+
+{{define "children"}}
+<div class="page-heading">
+  <h1 tabindex="-1" autofocus>Vems önskelista?</h1>
+</div>
+{{if .Children}}
+<ul class="choice-grid">
+  {{range .Children}}
+  <li>
+    <a class="choice-card" href="/children/{{.ID}}">
+      <span class="choice-mark" aria-hidden="true"></span>
+      <span>{{.Name}}</span>
+    </a>
+  </li>
+  {{end}}
+</ul>
+{{end}}
+<form class="creation-form" action="/children" method="post" hx-push-url="true">
+  <label for="child-name">Barnets namn</label>
+  <div class="inline-fields">
+    <input id="child-name" name="name" type="text" required>
+    <button type="submit">Lägg till barn</button>
+  </div>
+</form>
+{{end}}
+
+{{define "lists"}}
+<a class="back-link" href="/">Alla barn</a>
+<div class="page-heading">
+  <p class="context">Önskelistor</p>
+  <h1 tabindex="-1" autofocus>{{.Child.Name}}</h1>
+</div>
+{{if .Wishlists}}
+<ul class="choice-grid">
+  {{range .Wishlists}}
+  <li>
+    <a class="choice-card" href="/lists/{{.ID}}">
+      <span class="choice-mark choice-mark--list" aria-hidden="true"></span>
+      <span>{{.Title}}</span>
+    </a>
+  </li>
+  {{end}}
+</ul>
+{{end}}
+<form class="creation-form" action="/children/{{.Child.ID}}/wishlists" method="post" hx-push-url="true">
+  <label for="list-title">Listans namn</label>
+  <div class="inline-fields">
+    <input id="list-title" name="title" type="text" required>
+    <button type="submit">Skapa önskelista</button>
+  </div>
+</form>
+{{end}}
+
+{{define "compare"}}
+<a class="back-link" href="/children/{{.Wishlist.ChildID}}">Alla önskelistor</a>
+<div class="page-heading page-heading--with-actions">
+  <div>
+    {{if .HasPair}}
+    <p class="context">{{.Wishlist.Title}}</p>
+    <h1 tabindex="-1" autofocus>Välj din favorit</h1>
+    {{else}}
+    <h1 tabindex="-1" autofocus>{{.Wishlist.Title}}</h1>
+    {{end}}
+  </div>
+  <div class="actions">
+    <a class="button secondary" href="/lists/{{.Wishlist.ID}}/wishes/new">Lägg till en önskan</a>
+    <a class="button" href="/lists/{{.Wishlist.ID}}/ranked">Visa önskelistan</a>
+  </div>
+</div>
+{{if .HasPair}}
+  {{if .Upload}}<p class="upload-progress">Jämför din nya önskan · {{.Remaining}} kvar</p>{{end}}
+  <div class="pair">
+    <form class="pair-option" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
+      {{template "upload-fields" .}}
+      <input type="hidden" name="winner" value="{{.Left.ID}}">
+      <input type="hidden" name="loser" value="{{.Right.ID}}">
+      {{template "pick-button" .Left}}
+    </form>
+    <form class="pair-option" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
+      {{template "upload-fields" .}}
+      <input type="hidden" name="winner" value="{{.Right.ID}}">
+      <input type="hidden" name="loser" value="{{.Left.ID}}">
+      {{template "pick-button" .Right}}
+    </form>
+  </div>
+{{else if .Wish.ID}}
+  <article class="single-wish">
+    <div class="wish-image"><img src="/images/{{.Wish.ID}}" alt=""></div>
+    <div class="wish-copy">
+      <h2>{{.Wish.Title}}</h2>
+      {{with .Wish.Description}}<p class="wish-description">{{.}}</p>{{end}}
+    </div>
+  </article>
+  {{if .Completed}}
+  <p class="empty-note">Jämförelsen är klar.</p>
+  <a class="text-link" href="/lists/{{.Wishlist.ID}}">Jämför fler önskningar</a>
+  {{else}}
+  <p class="empty-note">Lägg till en önskan till för att börja jämföra.</p>
+  {{end}}
+{{else}}
+  <p class="empty-note">Listan är tom. Lägg till en önskan för att börja.</p>
+{{end}}
+{{end}}
+
+{{define "upload-fields"}}
+{{if .Upload}}
+<input type="hidden" name="upload" value="{{.Left.ID}}">
+<input type="hidden" name="remaining" value="{{.Remaining}}">
+{{range .Tried}}<input type="hidden" name="tried" value="{{.}}">{{end}}
+{{end}}
+{{end}}
+
+{{define "pick-button"}}
+<button type="submit" class="pick-card">
+  <span class="wish-image"><img src="/images/{{.ID}}" alt=""></span>
+  <span class="wish-copy">
+    <span class="pick-title">{{.Title}}</span>
+    {{with .Description}}<span class="wish-description">{{.}}</span>{{end}}
+  </span>
+</button>
+{{end}}
+
+{{define "ranked"}}
+<a class="back-link" href="/lists/{{.Wishlist.ID}}">Till jämförelsen</a>
+<div class="page-heading page-heading--with-actions">
+  <div>
+    <p class="context">Önskelista</p>
+    <h1 tabindex="-1" autofocus>{{.Wishlist.Title}}</h1>
+  </div>
+  <a class="button" href="/lists/{{.Wishlist.ID}}/wishes/new">Lägg till en önskan</a>
+</div>
+{{with .ShareURL}}
+<details class="sharing">
+  <summary>Dela önskelistan</summary>
+  <label for="share-url">Delningslänk</label>
+  <input id="share-url" type="url" readonly value="{{.}}">
+</details>
+{{end}}
+{{if .Wishes}}
+<ol class="ranked-grid">
+  {{range .Wishes}}
+  <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
+    <div class="wish-image">
+      <span class="rank-number" aria-hidden="true">{{.Rank}}</span>
+      <img src="/images/{{.ID}}" alt="" loading="lazy">
+    </div>
+    <div class="wish-copy">
+      <h2>{{.Title}}</h2>
+      {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}
+      <a class="text-link" href="/lists/{{.WishlistID}}/wishes/{{.ID}}/edit" aria-label="Ändra {{.Title}}">Ändra</a>
+    </div>
+  </li>
+  {{end}}
+</ol>
+{{else}}
+<p class="empty-note">Listan är tom.</p>
+{{end}}
+{{with .OtherWishes}}
+<details class="sharing">
+  <summary>Ändra övriga önskningar</summary>
+  <ul>
+    {{range .}}
+    <li><a class="text-link" href="/lists/{{.WishlistID}}/wishes/{{.ID}}/edit">{{.Title}}</a></li>
+    {{end}}
+  </ul>
+</details>
+{{end}}
+{{end}}
+
+{{define "share"}}
+<div class="page-heading">
+  <p class="context">Delad önskelista</p>
+  <h1 tabindex="-1" autofocus>{{.Wishlist.Title}}</h1>
+</div>
+{{if .Wishes}}
+<ol class="ranked-grid">
+  {{range .Wishes}}
+  <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
+    <div class="wish-image">
+      <span class="rank-number" aria-hidden="true">{{.Rank}}</span>
+      <img src="/images/{{.ID}}" alt="" loading="lazy">
+      {{with .Buyer}}
+      <div class="purchase-overlay"><strong>Köpt</strong><span>av {{.}}</span></div>
+      {{end}}
+    </div>
+    <div class="wish-copy">
+      <h2>{{.Title}}</h2>
+      {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}
+      <form action="/{{$.Wishlist.ShareID}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}" method="get" hx-boost="false">
+        <label class="purchase-control">
+          <input type="checkbox"
+                 aria-label="{{if .Buyer}}Avmarkera{{else}}Markera{{end}} {{.Title}} som köpt"
+                 {{if .Buyer}}checked{{end}}
+                 hx-get="/{{$.Wishlist.ShareID}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}"
+                 hx-trigger="change" hx-push-url="true">
+          {{if .Buyer}}Avmarkera som köpt{{else}}Markera som köpt{{end}}
+        </label>
+        <noscript><button type="submit" class="secondary">Fortsätt</button></noscript>
+      </form>
+    </div>
+  </li>
+  {{end}}
+</ol>
+{{else}}
+<p class="empty-note">Listan är tom.</p>
+{{end}}
+{{end}}
+
+{{define "wish-form"}}
+<a class="back-link" href="/lists/{{.Wishlist.ID}}{{if eq .View "edit"}}/ranked{{end}}">Till önskelistan</a>
+<div class="page-heading">
+  <p class="context">{{.Wishlist.Title}}</p>
+  <h1 tabindex="-1" autofocus>{{if eq .View "edit"}}Ändra önskan{{else}}Lägg till en önskan{{end}}</h1>
+</div>
+<form class="panel-form" action="/lists/{{.Wishlist.ID}}/wishes/{{if eq .View "edit"}}{{.Wish.ID}}/edit{{else}}new{{end}}" method="post" enctype="multipart/form-data" hx-encoding="multipart/form-data" hx-push-url="true">
+  {{if eq .View "edit"}}
+  <div class="wish-image form-preview"><img src="/images/{{.Wish.ID}}" alt="Nuvarande bild"></div>
+  {{end}}
+  <label for="wish-image">{{if eq .View "edit"}}Byt bild (valfritt){{else}}Bild{{end}}</label>
+  <input id="wish-image" type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" {{if eq .View "add"}}required{{end}}>
+  <label for="wish-title">Titel</label>
+  <input id="wish-title" name="title" type="text" required value="{{.Wish.Title}}">
+  <label for="wish-description">Beskrivning (valfritt)</label>
+  <textarea id="wish-description" name="description" rows="4">{{.Wish.Description}}</textarea>
+  <div class="actions">
+    <button type="submit">{{if eq .View "edit"}}Spara ändringar{{else}}Spara önskan{{end}}</button>
+    <a class="button secondary" href="/lists/{{.Wishlist.ID}}{{if eq .View "edit"}}/ranked{{end}}">Avbryt</a>
+  </div>
+</form>
+{{end}}
+
+{{define "purchase-form"}}
+<a class="back-link" href="/{{.Wishlist.ShareID}}">Till den delade önskelistan</a>
+<div class="page-heading">
+  <p class="context">{{.Wish.Title}}</p>
+  <h1 tabindex="-1" autofocus>{{if eq .View "clear"}}Avmarkera som köpt?{{else}}Markera som köpt{{end}}</h1>
+</div>
+<form class="panel-form" action="/{{.Wishlist.ShareID}}/wishes/{{.Wish.ID}}/{{if eq .View "clear"}}clear{{else}}buy{{end}}" method="post" hx-push-url="true">
+  {{if eq .View "purchase"}}
+  <label for="buyer">Ditt namn</label>
+  <input id="buyer" type="text" name="name" autocomplete="name" required>
+  {{end}}
+  <div class="actions">
+    <button type="submit">{{if eq .View "clear"}}Avmarkera{{else}}Spara köpet{{end}}</button>
+    <a class="button secondary" href="/{{.Wishlist.ShareID}}">Avbryt</a>
+  </div>
+</form>
+{{end}}
