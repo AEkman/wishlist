@@ -1,0 +1,22 @@
+FROM golang:1.26-alpine3.24 AS build
+
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY internal ./internal
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -trimpath -o /out/wishlist ./cmd/wishlist
+
+FROM alpine:3.24
+
+RUN addgroup -g 10001 wishlist \
+    && adduser -D -H -u 10001 -G wishlist wishlist \
+    && mkdir -m 0750 /data \
+    && chown wishlist:wishlist /data
+COPY --from=build /out/wishlist /usr/local/bin/wishlist
+
+WORKDIR /data
+USER wishlist
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/wishlist"]
