@@ -6,6 +6,7 @@ require (
 	github.com/cucumber/godog v0.16.0
 	github.com/gofiber/fiber/v3 v3.7.0
 	github.com/google/uuid v1.6.0
+	golang.org/x/image v0.47.0
 	golang.org/x/net v0.62.0
 	modernc.org/sqlite v1.62.0
 )

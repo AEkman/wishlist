@@ -1,7 +1,12 @@
 package web
 
 import (
+	"bytes"
 	"errors"
+	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"io"
 	"net/http"
 	"net/url"
@@ -10,7 +15,10 @@ import (
 
 	"github.com/AEkman/wishlist/internal/store"
 	"github.com/gofiber/fiber/v3"
+	_ "golang.org/x/image/webp"
 )
+
+const maxImagePixels = 24_000_000
 
 func (s server) compare(c fiber.Ctx) error {
 	list, err := s.db.Wishlist(c.Context(), c.Params("list"))
@@ -170,27 +178,35 @@ func readImage(c fiber.Ctx, required bool) ([]byte, string, error) {
 	}
 	defer file.Close()
 
-	image, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
+	payload, err := io.ReadAll(io.LimitReader(file, maxImageSize+1))
 	if err != nil {
 		return nil, "", err
 	}
-	if len(image) > maxImageSize {
+	if len(payload) > maxImageSize {
 		return nil, "", store.ErrInvalid
 	}
-	mediaType := http.DetectContentType(image)
+	mediaType := http.DetectContentType(payload)
 	switch mediaType {
 	case "image/jpeg", "image/png", "image/gif", "image/webp":
-		return image, mediaType, nil
 	default:
 		return nil, "", store.ErrInvalid
 	}
+
+	config, _, err := image.DecodeConfig(bytes.NewReader(payload))
+	if err != nil || config.Width <= 0 || config.Height <= 0 || config.Width > maxImagePixels/config.Height {
+		return nil, "", store.ErrInvalid
+	}
+	if _, _, err := image.Decode(bytes.NewReader(payload)); err != nil {
+		return nil, "", store.ErrInvalid
+	}
+	return payload, mediaType, nil
 }
 
 func (s server) wishFormError(c fiber.Ctx, data page, err error) error {
 	if !errors.Is(err, store.ErrInvalid) {
 		return err
 	}
-	data.Error = "Ange en titel och välj en bild i JPEG-, PNG-, GIF- eller WebP-format (högst 8 MB)."
+	data.Error = "Välj en giltig JPEG-, PNG-, GIF- eller WebP-bild (högst 8 MB och 24 megapixlar)."
 	if strings.TrimSpace(data.Wish.Title) == "" {
 		data.Error = "Ange en titel."
 	}
