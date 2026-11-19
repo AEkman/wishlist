@@ -1,8 +1,8 @@
 package web
 
 import (
-	"context"
-	"log/slog"
+	"encoding/json"
+	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
@@ -34,29 +34,14 @@ func (s server) uploadComparison(c fiber.Ctx, data page, wishes []store.Wish, id
 	for i, wish := range wishes {
 		order[i] = wish.ID
 	}
-	opponentID, pool := uploadOpponent(order, id, c.Query("pivot"), c.Query("higher") == "1", tried, s.draw)
-	opponent := findWishIndex(wishes, opponentID)
+	opponent := findWishIndex(wishes, uploadOpponent(order, id, c.Query("pivot"), c.Query("higher") == "1", tried, s.draw))
 	if opponent < 0 {
 		return redirect(c, "/lists/"+data.Wishlist.ID+"?"+url.Values{"done": {id}}.Encode())
 	}
 	data.HasPair, data.Upload = true, true
 	data.Left, data.Right = wishes[index], wishes[opponent]
 	data.Tried, data.Remaining = tried, remaining
-	logPair(c.Context(), data, index+1, opponent+1, pool)
 	return s.show(c, data)
-}
-
-func logPair(ctx context.Context, data page, leftRank, rightRank int, pool string) {
-	mode := "regular"
-	if data.Upload {
-		mode = "upload"
-	}
-	slog.DebugContext(ctx, "ranking_pair",
-		"list_id", data.Wishlist.ID, "mode", mode, "pool", pool,
-		"left", data.Left.Title, "left_rank", leftRank,
-		"right", data.Right.Title, "right_rank", rightRank,
-		"remaining_upload_picks", data.Remaining,
-	)
 }
 
 func (s server) pick(c fiber.Ctx) error {
@@ -88,12 +73,29 @@ func (s server) pick(c fiber.Ctx) error {
 			}
 		}
 	}
-	if err := s.db.Pick(c.Context(), listID, winner, loser); err != nil {
+	result, err := s.db.Pick(c.Context(), listID, winner, loser)
+	if err != nil {
 		return err
 	}
 	path := "/lists/" + listID
 	if len(next) > 0 {
 		path += "?" + next.Encode()
+	}
+	if s.rankingDebug && c.Get("HX-Request") == "true" {
+		// HTMX handles these headers before requesting the next comparison.
+		event, err := json.Marshal(map[string]store.PickResult{"wishlist:ranking-pick": result})
+		if err != nil {
+			return err
+		}
+		location, err := json.Marshal(map[string]string{
+			"path": path, "target": "#screen", "select": "#screen", "swap": "outerHTML show:top",
+		})
+		if err != nil {
+			return err
+		}
+		c.Set("HX-Trigger", string(event))
+		c.Set("HX-Location", string(location))
+		return c.SendStatus(http.StatusOK)
 	}
 	return redirect(c, path)
 }

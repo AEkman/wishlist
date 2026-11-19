@@ -48,7 +48,7 @@ func TestWishlistSurvivesReopeningDatabase(t *testing.T) {
 	list := createList(t, s, "Alex", "Jul")
 	bike := createWish(t, s, list.ID, "Bike")
 	lego := createWish(t, s, list.ID, "LEGO")
-	if err := s.Pick(ctx, list.ID, lego.ID, bike.ID); err != nil {
+	if _, err := s.Pick(ctx, list.ID, lego.ID, bike.ID); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.MarkBought(ctx, list.ID, lego.ID, "Anna"); err != nil {
@@ -142,10 +142,10 @@ func TestPickMovesWinnerAboveLoserAndLeavesOtherWishesInOrder(t *testing.T) {
 	lego := createWish(t, s, list.ID, "LEGO")
 	skates := createWish(t, s, list.ID, "Skates")
 	ball := createWish(t, s, list.ID, "Ball")
-	if err := s.Pick(ctx, list.ID, skates.ID, bike.ID); err != nil {
+	if _, err := s.Pick(ctx, list.ID, skates.ID, bike.ID); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.Pick(ctx, list.ID, bike.ID, lego.ID); err != nil {
+	if _, err := s.Pick(ctx, list.ID, bike.ID, lego.ID); err != nil {
 		t.Fatal(err)
 	}
 	wishes, err := s.Wishes(ctx, list.ID)
@@ -154,10 +154,10 @@ func TestPickMovesWinnerAboveLoserAndLeavesOtherWishesInOrder(t *testing.T) {
 	}
 	other := createList(t, s, "Sam", "Jul")
 	otherWish := createWish(t, s, other.ID, "LEGO")
-	if err := s.Pick(ctx, list.ID, skates.ID, otherWish.ID); !errors.Is(err, ErrNotFound) {
+	if _, err := s.Pick(ctx, list.ID, skates.ID, otherWish.ID); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("pick across lists = %v, want not found", err)
 	}
-	if err := s.Pick(ctx, list.ID, skates.ID, skates.ID); !errors.Is(err, ErrInvalid) {
+	if _, err := s.Pick(ctx, list.ID, skates.ID, skates.ID); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("pick against the same wish = %v, want invalid input", err)
 	}
 }

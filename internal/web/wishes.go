@@ -50,7 +50,6 @@ func (s server) compare(c fiber.Ctx) error {
 	default:
 		left, right := randomPair(len(wishes), s.draw)
 		data.Left, data.Right, data.HasPair = wishes[left], wishes[right], true
-		logPair(c.Context(), data, left+1, right+1, "random")
 	}
 	return s.show(c, data)
 }

@@ -14,7 +14,7 @@ func randomPair(size int, draw func(int) int) (int, int) {
 	return left, right
 }
 
-func uploadOpponent(order []string, newID, pivot string, higher bool, tried []string, draw func(int) int) (id, pool string) {
+func uploadOpponent(order []string, newID, pivot string, higher bool, tried []string, draw func(int) int) string {
 	pivotRank := slices.Index(order, pivot)
 	var eligible, preferred []string
 	for rank, id := range order {
@@ -27,18 +27,10 @@ func uploadOpponent(order []string, newID, pivot string, higher bool, tried []st
 		}
 	}
 	if len(preferred) > 0 {
-		pool := "lower"
-		if higher {
-			pool = "higher"
-		}
-		return preferred[draw(len(preferred))], pool
+		return preferred[draw(len(preferred))]
 	}
 	if len(eligible) > 0 {
-		pool := "random"
-		if pivotRank >= 0 {
-			pool = "fallback"
-		}
-		return eligible[draw(len(eligible))], pool
+		return eligible[draw(len(eligible))]
 	}
-	return "", ""
+	return ""
 }

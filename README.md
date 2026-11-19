@@ -18,4 +18,4 @@ Use Go 1.26 or later. Run `go run ./cmd/wishlist` to start the app. Set `LISTEN_
 
 Run `go test ./...` or `make test`. Each Godog scenario uses a fresh in-memory SQLite database. See the [acceptance scenarios](features/). The PIN scenarios have the `@wip` tag and are deferred.
 
-To debug comparisons, run `RANKING_DEBUG=1 make start` and follow the output with `make logs`. The log shows the displayed pair, the source of the opponent after an upload, and each item's rank before and after a pick. Run `make start` to return to the default log level.
+To debug comparisons, run `RANKING_DEBUG=1 make start` and reload the app if it is already open. On macOS, press Option–Command–J in Chrome to open the console. Each pick shows both wishes and their ranks before and after the pick. Run `make start` to turn off the trace.

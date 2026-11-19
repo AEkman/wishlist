@@ -1,9 +1,7 @@
 package web
 
 import (
-	"bytes"
-	"log"
-	"log/slog"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -11,17 +9,8 @@ import (
 	"testing"
 )
 
-func TestRankingDebugLogsShowPairAndRankChanges(t *testing.T) {
-	var output bytes.Buffer
-	previous := slog.Default()
-	previousWriter, previousFlags := log.Writer(), log.Flags()
-	t.Cleanup(func() {
-		slog.SetDefault(previous)
-		log.SetOutput(previousWriter)
-		log.SetFlags(previousFlags)
-	})
-	slog.SetDefault(slog.New(slog.NewTextHandler(&output, &slog.HandlerOptions{Level: slog.LevelDebug})))
-
+func TestRankingDebugReportsEachPickToHTMX(t *testing.T) {
+	t.Setenv("RANKING_DEBUG", "1")
 	db, app := testApp(t)
 	child, err := db.CreateChild(t.Context(), "Alex")
 	if err != nil {
@@ -39,39 +28,47 @@ func TestRankingDebugLogsShowPairAndRankChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	path := "/lists/" + list.ID
 	res, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	_ = res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("compare screen status = %d, want 200", res.StatusCode)
+	if body := readBody(t, res); !strings.Contains(body, "/static/ranking-debug.js") || res.Header.Get("HX-Trigger") != "" {
+		t.Error("comparison page should load the debug script without logging a pick")
 	}
-	for range 2 {
+	type ranks struct {
+		WinnerBefore int `json:"winnerBefore"`
+		WinnerAfter  int `json:"winnerAfter"`
+		LoserBefore  int `json:"loserBefore"`
+		LoserAfter   int `json:"loserAfter"`
+	}
+	for _, want := range []ranks{{2, 1, 1, 2}, {1, 1, 2, 2}} {
 		body := url.Values{"winner": {lego.ID}, "loser": {bike.ID}}.Encode()
 		req := httptest.NewRequest(http.MethodPost, path+"/pick", strings.NewReader(body))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("HX-Request", "true")
 		res, err := app.Test(req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		_ = res.Body.Close()
-		if res.StatusCode != http.StatusSeeOther {
-			t.Fatalf("comparison vote status = %d, want 303", res.StatusCode)
+		if res.StatusCode != http.StatusOK {
+			t.Fatalf("HTMX pick returned %d, want 200", res.StatusCode)
 		}
-	}
-	logged := output.String()
-	for _, expected := range []string{
-		"msg=ranking_pair", "mode=regular",
-		"msg=ranking_pick", "winner=LEGO", "loser=Bike",
-		"winner_rank_before=2 winner_rank_after=1",
-		"winner_rank_before=1 winner_rank_after=1",
-		"loser_rank_before=1 loser_rank_after=2",
-	} {
-		if !strings.Contains(logged, expected) {
-			t.Errorf("ranking log missing %q:\n%s", expected, logged)
+		var destination struct{ Path, Target, Select string }
+		if err := json.Unmarshal([]byte(res.Header.Get("HX-Location")), &destination); err != nil {
+			t.Fatal(err)
+		}
+		if destination.Path != path || destination.Target != "#screen" || destination.Select != "#screen" {
+			t.Fatalf("HTMX destination = %+v", destination)
+		}
+		var event map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(res.Header.Get("HX-Trigger")), &event); err != nil {
+			t.Fatal(err)
+		}
+		var got ranks
+		if len(event) != 1 || json.Unmarshal(event["wishlist:ranking-pick"], &got) != nil || got != want {
+			t.Errorf("debug event = %s, want ranks %+v", res.Header.Get("HX-Trigger"), want)
 		}
 	}
 }

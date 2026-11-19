@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"math/rand/v2"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/AEkman/wishlist/internal/store"
@@ -30,6 +31,7 @@ type page struct {
 	HasPair, Upload, Completed   bool
 	Tried                        []string
 	Remaining                    int
+	RankingDebug                 bool
 }
 
 type rankedWish struct {
@@ -39,22 +41,23 @@ type rankedWish struct {
 }
 
 type server struct {
-	db      *store.Store
-	pages   *template.Template
-	baseURL string
-	draw    func(int) int
+	db           *store.Store
+	pages        *template.Template
+	baseURL      string
+	draw         func(int) int
+	rankingDebug bool
 }
 
 func New(db *store.Store, baseURL string) (*fiber.App, error) {
-	return newApp(db, baseURL, rand.IntN)
+	return newApp(db, baseURL, rand.IntN, os.Getenv("RANKING_DEBUG") == "1")
 }
 
-func newApp(db *store.Store, baseURL string, draw func(int) int) (*fiber.App, error) {
+func newApp(db *store.Store, baseURL string, draw func(int) int, rankingDebug bool) (*fiber.App, error) {
 	pages, err := template.ParseFS(assets, "templates/*.html")
 	if err != nil {
 		return nil, err
 	}
-	s := server{db: db, pages: pages, baseURL: strings.TrimRight(baseURL, "/"), draw: draw}
+	s := server{db: db, pages: pages, baseURL: strings.TrimRight(baseURL, "/"), draw: draw, rankingDebug: rankingDebug}
 	app := fiber.New(fiber.Config{
 		BodyLimit:    maxImageSize + (1 << 20),
 		ErrorHandler: s.handleError,
@@ -86,6 +89,7 @@ func newApp(db *store.Store, baseURL string, draw func(int) int) (*fiber.App, er
 }
 
 func (s server) show(c fiber.Ctx, data page) error {
+	data.RankingDebug = s.rankingDebug
 	var body bytes.Buffer
 	if err := s.pages.ExecuteTemplate(&body, "page", data); err != nil {
 		return err
@@ -108,7 +112,7 @@ func (s server) asset(c fiber.Ctx) error {
 	switch file {
 	case "app.css":
 		contentType = "text/css; charset=utf-8"
-	case "htmx.min.js":
+	case "htmx.min.js", "ranking-debug.js":
 		contentType = "text/javascript; charset=utf-8"
 	case "htmx.LICENSE":
 		contentType = "text/plain; charset=utf-8"

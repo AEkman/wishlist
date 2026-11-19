@@ -4,31 +4,36 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log/slog"
 )
 
-func (s *Store) Pick(ctx context.Context, wishlistID, winnerID, loserID string) error {
+type PickResult struct {
+	WinnerBefore int `json:"winnerBefore"`
+	WinnerAfter  int `json:"winnerAfter"`
+	LoserBefore  int `json:"loserBefore"`
+	LoserAfter   int `json:"loserAfter"`
+}
+
+func (s *Store) Pick(ctx context.Context, wishlistID, winnerID, loserID string) (PickResult, error) {
 	if winnerID == loserID {
-		return ErrInvalid
+		return PickResult{}, ErrInvalid
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return PickResult{}, err
 	}
 	defer tx.Rollback()
 
 	var winnerPosition, loserPosition int
-	var winnerTitle, loserTitle string
 	err = tx.QueryRowContext(ctx, `
-		SELECT winner.position, loser.position, winner.title, loser.title
+		SELECT winner.position, loser.position
 		FROM wishes AS winner JOIN wishes AS loser ON winner.wishlist_id = loser.wishlist_id
 		WHERE winner.wishlist_id = ? AND winner.id = ? AND loser.id = ?
-	`, wishlistID, winnerID, loserID).Scan(&winnerPosition, &loserPosition, &winnerTitle, &loserTitle)
+	`, wishlistID, winnerID, loserID).Scan(&winnerPosition, &loserPosition)
 	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotFound
+		return PickResult{}, ErrNotFound
 	}
 	if err != nil {
-		return err
+		return PickResult{}, err
 	}
 	winnerAfter, loserAfter := winnerPosition, loserPosition
 	if winnerPosition > loserPosition {
@@ -38,17 +43,17 @@ func (s *Store) Pick(ctx context.Context, wishlistID, winnerID, loserID string) 
 			WHERE wishlist_id = ? AND position BETWEEN ? AND ?
 		`, winnerID, loserPosition, wishlistID, loserPosition, winnerPosition)
 		if err != nil {
-			return err
+			return PickResult{}, err
 		}
 		winnerAfter, loserAfter = loserPosition, loserPosition+1
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return PickResult{}, err
 	}
-	slog.DebugContext(ctx, "ranking_pick",
-		"list_id", wishlistID, "winner", winnerTitle, "loser", loserTitle,
-		"winner_rank_before", winnerPosition+1, "winner_rank_after", winnerAfter+1,
-		"loser_rank_before", loserPosition+1, "loser_rank_after", loserAfter+1,
-	)
-	return nil
+	return PickResult{
+		WinnerBefore: winnerPosition + 1,
+		WinnerAfter:  winnerAfter + 1,
+		LoserBefore:  loserPosition + 1,
+		LoserAfter:   loserAfter + 1,
+	}, nil
 }

@@ -79,7 +79,7 @@ func (a *acceptance) start(ctx context.Context, _ *godog.Scenario) (context.Cont
 		draw := a.draws[0]
 		a.draws = a.draws[1:]
 		return draw
-	})
+	}, false)
 	return ctx, err
 }
 
