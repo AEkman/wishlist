@@ -32,5 +32,6 @@ Feature: Rank wishes by comparing two at a time
     Given I am comparing wishes in a wishlist with twelve wishes
     When I select "Visa önskelistan"
     Then I see ranks 1 through 10 in order
+    And the wishes appear in a single column
     And the first five wishes have larger cards than the next five
     And the comparison is hidden

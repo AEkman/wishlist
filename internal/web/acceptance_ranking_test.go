@@ -103,6 +103,20 @@ func (a *acceptance) registerRankingSteps(sc *godog.ScenarioContext) {
 		}
 		return nil
 	})
+	sc.Then(`^the wishes appear in a single column$`, func() error {
+		lists := htmlNodes(a.doc, func(node *html.Node) bool {
+			return isElement("ol")(node) && hasClass(node, "ranked-list")
+		})
+		if len(lists) != 1 {
+			return fmt.Errorf("want one ordered list for the vertical layout, got %d", len(lists))
+		}
+		for _, card := range a.rankedCards() {
+			if card.Parent != lists[0] {
+				return fmt.Errorf("a ranked wish is outside the ordered list")
+			}
+		}
+		return nil
+	})
 	sc.Then(`^the comparison is hidden$`, func() error {
 		if len(a.compareForms()) != 0 {
 			return fmt.Errorf("comparison forms are visible")

@@ -10,6 +10,7 @@ Feature: Share wishlists and record purchases
     Given a wishlist with twelve wishes has a share link at its UUID path
     When I open the share link
     Then all twelve wishes appear in rank order
+    And the wishes appear in a single column
     And the first five wishes have larger cards than the rest
     And I can mark a wish as bought
     And the shared page has no controls to add, edit, or compare wishes

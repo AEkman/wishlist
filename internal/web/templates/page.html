@@ -175,7 +175,7 @@
 </details>
 {{end}}
 {{if .Wishes}}
-<ol class="ranked-grid">
+<ol class="ranked-list">
   {{range .Wishes}}
   <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
     <div class="wish-image">
@@ -211,7 +211,7 @@
   <h1 tabindex="-1" autofocus>{{.Wishlist.Title}}</h1>
 </div>
 {{if .Wishes}}
-<ol class="ranked-grid">
+<ol class="ranked-list">
   {{range .Wishes}}
   <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
     <div class="wish-image">
