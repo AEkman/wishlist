@@ -11,6 +11,13 @@ Feature: Add and edit wishes
     When I upload a picture with the title "LEGO" and the description "The space set"
     Then Alex's wish includes the picture, title, and description
 
+  Scenario: Add a wish using the phone camera
+    Given I have opened Alex's wishlist
+    When I open the add-wish form
+    Then I can take a picture or choose an existing picture
+    When I submit a camera picture with the title "LEGO"
+    Then Alex's wish includes the picture, title, and description
+
   Scenario Outline: Compare a new wish with a limited number of different opponents
     Given Alex's wishlist has <Existing wishes> wishes
     When I add a wish with a picture and title

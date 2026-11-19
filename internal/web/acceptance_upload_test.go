@@ -35,6 +35,13 @@ func (a *acceptance) registerUploadSteps(sc *godog.ScenarioContext) {
 		return u.addPicture(title, "")
 	})
 	sc.When(`^I upload a picture with the title "([^"]+)" and the description "([^"]+)"$`, u.addPicture)
+	sc.When(`^I open the add-wish form$`, func() error { return u.clickLink("Lägg till en önskan") })
+	sc.Then(`^I can take a picture or choose an existing picture$`, u.checkPictureSources)
+	sc.When(`^I submit a camera picture with the title "([^"]+)"$`, func(title string) error {
+		u.uploadedTitle = title
+		u.uploadedDescription = "From the camera"
+		return u.submitPicture("camera", title, u.uploadedDescription, image.Rect(0, 0, 2, 1))
+	})
 	sc.When(`^I add a wish with a picture and title$`, func() error { return u.addPicture(newWishTitle, "") })
 	sc.Then(`^"([^"]+)" is first$`, u.wishIsFirst)
 	sc.Then(`^"([^"]+)" is the first wish on Alex's wishlist$`, u.wishIsFirst)
@@ -79,10 +86,29 @@ func (u *uploadAcceptance) addPicture(title, description string) error {
 	}
 	u.uploadedTitle = title
 	u.uploadedDescription = description
-	return u.submitPicture(title, description, image.Rect(0, 0, 2, 1))
+	return u.submitPicture("image", title, description, image.Rect(0, 0, 2, 1))
 }
 
-func (u *uploadAcceptance) submitPicture(title, description string, bounds image.Rectangle) error {
+func (u *uploadAcceptance) checkPictureSources() error {
+	sources := map[string]string{}
+	for _, input := range htmlNodes(u.doc, isElement("input")) {
+		if htmlAttr(input, "type") != "file" {
+			continue
+		}
+		for _, attr := range input.Attr {
+			if attr.Key == "required" {
+				return fmt.Errorf("each picture source must work without the other source")
+			}
+		}
+		sources[htmlAttr(input, "name")] = htmlAttr(input, "capture")
+	}
+	if len(sources) != 2 || sources["camera"] != "environment" || sources["image"] != "" {
+		return fmt.Errorf("want a rear camera and a separate gallery input, got %v", sources)
+	}
+	return nil
+}
+
+func (u *uploadAcceptance) submitPicture(source, title, description string, bounds image.Rectangle) error {
 	var action string
 	for _, form := range htmlNodes(u.doc, isElement("form")) {
 		if htmlAttr(form, "enctype") == "multipart/form-data" {
@@ -102,7 +128,7 @@ func (u *uploadAcceptance) submitPicture(title, description string, bounds image
 	if err := upload.WriteField("description", description); err != nil {
 		return err
 	}
-	part, err := upload.CreateFormFile("image", "wish.png")
+	part, err := upload.CreateFormFile(source, "wish.png")
 	if err != nil {
 		return err
 	}
@@ -273,7 +299,7 @@ func (u *uploadAcceptance) editBoughtWish() error {
 	if err := u.get(u.listPath() + "/wishes/" + wish.ID + "/edit"); err != nil {
 		return err
 	}
-	if err := u.submitPicture(editedWishTitle, editedWishDescription, image.Rect(0, 0, 3, 2)); err != nil {
+	if err := u.submitPicture("image", editedWishTitle, editedWishDescription, image.Rect(0, 0, 3, 2)); err != nil {
 		return err
 	}
 	u.editStartedComparison = len(u.uploadPair()) != 0

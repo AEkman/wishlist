@@ -254,8 +254,17 @@
   {{if eq .View "edit"}}
   <div class="wish-image form-preview"><img src="/images/{{.Wish.ID}}?v={{.Wish.ImageRevision}}" alt="Nuvarande bild"></div>
   {{end}}
-  <label for="wish-image">{{if eq .View "edit"}}Byt bild (valfritt){{else}}Bild{{end}}</label>
-  <input id="wish-image" type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" {{if eq .View "add"}}required{{end}}>
+  <fieldset class="image-options">
+    <legend>{{if eq .View "edit"}}Byt bild (valfritt){{else}}Bild{{end}}</legend>
+    <div>
+      <label for="wish-camera">Ta bild</label>
+      <input id="wish-camera" type="file" name="camera" accept="image/*" capture="environment">
+    </div>
+    <div>
+      <label for="wish-image">Välj bild</label>
+      <input id="wish-image" type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
+    </div>
+  </fieldset>
   <label for="wish-title">Titel</label>
   <input id="wish-title" name="title" type="text" required value="{{.Wish.Title}}">
   <label for="wish-description">Beskrivning (valfritt)</label>

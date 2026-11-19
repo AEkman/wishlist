@@ -20,6 +20,8 @@ import (
 
 const maxImagePixels = 24_000_000
 
+var errMultipleImages = errors.New("multiple images submitted")
+
 func (s server) compare(c fiber.Ctx) error {
 	list, err := s.db.Wishlist(c.Context(), c.Params("list"))
 	if err != nil {
@@ -166,6 +168,13 @@ func readImage(c fiber.Ctx, required bool) ([]byte, string, error) {
 		return nil, "", store.ErrInvalid
 	}
 	files := form.File["image"]
+	cameraFiles := form.File["camera"]
+	if len(files)+len(cameraFiles) > 1 {
+		return nil, "", errMultipleImages
+	}
+	if len(cameraFiles) > 0 {
+		files = cameraFiles
+	}
 	if len(files) == 0 && !required {
 		return nil, "", nil
 	}
@@ -203,12 +212,16 @@ func readImage(c fiber.Ctx, required bool) ([]byte, string, error) {
 }
 
 func (s server) wishFormError(c fiber.Ctx, data page, err error) error {
-	if !errors.Is(err, store.ErrInvalid) {
+	switch {
+	case errors.Is(err, errMultipleImages):
+		data.Error = "Välj en bild. Använd antingen Ta bild eller Välj bild."
+	case errors.Is(err, store.ErrInvalid):
+		data.Error = "Välj en giltig JPEG-, PNG-, GIF- eller WebP-bild (högst 8 MB och 24 megapixlar)."
+		if strings.TrimSpace(data.Wish.Title) == "" {
+			data.Error = "Ange en titel."
+		}
+	default:
 		return err
-	}
-	data.Error = "Välj en giltig JPEG-, PNG-, GIF- eller WebP-bild (högst 8 MB och 24 megapixlar)."
-	if strings.TrimSpace(data.Wish.Title) == "" {
-		data.Error = "Ange en titel."
 	}
 	c.Status(http.StatusBadRequest)
 	return s.show(c, data)
