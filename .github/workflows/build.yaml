@@ -56,6 +56,8 @@ jobs:
             sleep "$((attempt * 2))"
           done
       - run: go test ./... -count=1
+      - name: Check sharing controls
+        run: node --test internal/web/share-links.test.mjs
       - run: go vet ./...
       - name: Check release planning
         run: python3 scripts/release-test.py

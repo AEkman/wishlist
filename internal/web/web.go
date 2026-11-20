@@ -7,11 +7,13 @@ import (
 	"embed"
 	"errors"
 	"html/template"
+	"log/slog"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/AEkman/wishlist/internal/store"
 	"github.com/gofiber/fiber/v3"
@@ -80,9 +82,21 @@ func newApp(db *store.Store, baseURL string, draw func(int) int, rankingDebug bo
 		ErrorHandler: s.handleError,
 	})
 	app.Use(func(c fiber.Ctx) error {
+		started := time.Now()
 		c.Set("X-Content-Type-Options", "nosniff")
 		c.Set("Referrer-Policy", "no-referrer")
-		return c.Next()
+		err := c.Next()
+		requestErr := err
+		if err != nil {
+			err = s.handleError(c, err)
+		}
+		attributes := []any{"method", c.Method(), "route", c.Route().Path, "status", c.Response().StatusCode(), "duration", time.Since(started)}
+		if c.Response().StatusCode() >= http.StatusInternalServerError {
+			slog.Error("HTTP request", append(attributes, "error", requestErr)...)
+		} else {
+			slog.Info("HTTP request", attributes...)
+		}
+		return err
 	})
 	if len(configuredPIN) > 0 {
 		pin := configuredPIN[0]
@@ -230,7 +244,7 @@ func (s server) asset(c fiber.Ctx) error {
 	switch file {
 	case "app.css":
 		contentType = "text/css; charset=utf-8"
-	case "htmx.min.js", "ranking-debug.js", "wish-camera.js", "child-dialog.js":
+	case "htmx.min.js", "ranking-debug.js", "wish-camera.js", "child-dialog.js", "share-links.js":
 		contentType = "text/javascript; charset=utf-8"
 	case "htmx.LICENSE":
 		contentType = "text/plain; charset=utf-8"
