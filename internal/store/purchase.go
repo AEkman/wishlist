@@ -13,7 +13,7 @@ func (s *Store) MarkBought(ctx context.Context, wishlistID, wishID, buyer string
 	if buyer == "" {
 		return ErrInvalid
 	}
-	err := requireAffectedRow(s.db.ExecContext(ctx, `
+	err := requireAffectedRow(s.execContext(ctx, `
 		UPDATE wishes SET buyer = ? WHERE wishlist_id = ? AND id = ? AND buyer = ''
 	`, buyer, wishlistID, wishID))
 	if !errors.Is(err, ErrNotFound) {
@@ -26,7 +26,7 @@ func (s *Store) MarkBought(ctx context.Context, wishlistID, wishID, buyer string
 }
 
 func (s *Store) ClearBought(ctx context.Context, wishlistID, wishID string) error {
-	return requireAffectedRow(s.db.ExecContext(ctx, `
+	return requireAffectedRow(s.execContext(ctx, `
 		UPDATE wishes SET buyer = '' WHERE wishlist_id = ? AND id = ?
 	`, wishlistID, wishID))
 }

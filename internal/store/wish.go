@@ -31,7 +31,7 @@ func (s *Store) UpdateWish(ctx context.Context, wishlistID, wishID, title, descr
 	}
 	query += " WHERE wishlist_id = ? AND id = ? RETURNING " + wishColumns
 	args = append(args, wishlistID, wishID)
-	return scanWish(s.db.QueryRowContext(ctx, query, args...))
+	return scanWish(s.queryRowContext(ctx, query, args...))
 }
 
 func (s *Store) CreateWish(ctx context.Context, wishlistID, title, description, mediaType string, image []byte) (Wish, error) {
@@ -43,20 +43,31 @@ func (s *Store) CreateWish(ctx context.Context, wishlistID, title, description, 
 	if err != nil {
 		return Wish{}, err
 	}
-	err = requireAffectedRow(s.db.ExecContext(ctx, `
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return Wish{}, err
+	}
+	defer tx.Rollback()
+	if err := s.lockWishlist(ctx, tx, wishlistID); err != nil {
+		return Wish{}, err
+	}
+	err = requireAffectedRow(tx.ExecContext(ctx, s.bind(`
 		INSERT INTO wishes (id, wishlist_id, title, description, media_type, image, position)
 		SELECT ?, list.id, ?, ?, ?, ?,
 			COALESCE((SELECT MAX(position) + 1 FROM wishes WHERE wishlist_id = list.id), 0)
 		FROM wishlists AS list WHERE list.id = ?
-	`, id, title, description, mediaType, image, wishlistID))
+	`), id, title, description, mediaType, image, wishlistID))
 	if err != nil {
+		return Wish{}, err
+	}
+	if err := tx.Commit(); err != nil {
 		return Wish{}, err
 	}
 	return Wish{ID: id, WishlistID: wishlistID, Title: title, Description: description}, nil
 }
 
 func (s *Store) Wishes(ctx context.Context, wishlistID string) ([]Wish, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT "+wishColumns+" FROM wishes WHERE wishlist_id = ? ORDER BY position", wishlistID)
+	rows, err := s.queryContext(ctx, "SELECT "+wishColumns+" FROM wishes WHERE wishlist_id = ? ORDER BY position", wishlistID)
 	if err != nil {
 		return nil, err
 	}
@@ -73,14 +84,14 @@ func (s *Store) Wishes(ctx context.Context, wishlistID string) ([]Wish, error) {
 }
 
 func (s *Store) Wish(ctx context.Context, wishlistID, wishID string) (Wish, error) {
-	return scanWish(s.db.QueryRowContext(ctx,
+	return scanWish(s.queryRowContext(ctx,
 		"SELECT "+wishColumns+" FROM wishes WHERE wishlist_id = ? AND id = ?", wishlistID, wishID))
 }
 
 func (s *Store) Image(ctx context.Context, wishID string) (string, []byte, error) {
 	var mediaType string
 	var image []byte
-	err := s.db.QueryRowContext(ctx, "SELECT media_type, image FROM wishes WHERE id = ?", wishID).Scan(&mediaType, &image)
+	err := s.queryRowContext(ctx, "SELECT media_type, image FROM wishes WHERE id = ?", wishID).Scan(&mediaType, &image)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil, ErrNotFound
 	}

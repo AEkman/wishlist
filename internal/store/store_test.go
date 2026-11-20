@@ -31,6 +31,10 @@ func TestOpenUpgradesImagesInExistingWishlists(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := openTestStore(t, path)
+	lists, err := s.Wishlists(t.Context(), "alex")
+	if err != nil || len(lists) != 1 || lists[0].ID != "list" {
+		t.Fatalf("migrated child wishlists = %+v, %v", lists, err)
+	}
 	before, err := s.Wish(t.Context(), "list", "wish")
 	if err != nil || before.Buyer != "Anna" || before.ImageRevision != 0 {
 		t.Fatalf("upgraded wish = %+v, %v", before, err)
@@ -306,4 +310,54 @@ func openTestStore(t *testing.T, dsn string) *Store {
 		}
 	})
 	return s
+}
+
+func TestChildUsesNameAsID(t *testing.T) {
+	s, err := Open(":memory:")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	child, err := s.CreateChild(t.Context(), "  Alex  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if child.ID != "alex" {
+		t.Fatalf("child ID = %q, want alex", child.ID)
+	}
+}
+
+func TestMigrationKeepsChildrenWithMatchingNames(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "duplicates.db")
+	legacy, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.Exec(schema); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := legacy.Exec(`INSERT INTO children (id,name) VALUES ('old-a','Alex'), ('old-b','Alex'); INSERT INTO wishlists (id,child_id,title,share_id) VALUES ('a','old-a','First','share-a'), ('b','old-b','Second','share-b')`); err != nil {
+		t.Fatal(err)
+	}
+	if err := legacy.Close(); err != nil {
+		t.Fatal(err)
+	}
+	s := openTestStore(t, path)
+	for _, tc := range []struct{ id, title string }{{"alex", "First"}, {"alex-extra", "Second"}} {
+		lists, err := s.Wishlists(t.Context(), tc.id)
+		if err != nil || len(lists) != 1 || lists[0].Title != tc.title {
+			t.Fatalf("%s lists = %v, %v", tc.id, lists, err)
+		}
+	}
+}
+
+func TestSQLiteRecordsGooseMigration(t *testing.T) {
+	s := openMemoryStore(t)
+	var version int
+	if err := s.db.QueryRowContext(t.Context(), "SELECT MAX(version_id) FROM goose_db_version WHERE is_applied").Scan(&version); err != nil {
+		t.Fatal(err)
+	}
+	if version != 1 {
+		t.Fatalf("Goose version = %d, want 1", version)
+	}
 }

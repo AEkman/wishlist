@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -21,7 +22,11 @@ func main() {
 }
 
 func run() error {
-	db, err := store.Open(cmp.Or(os.Getenv("DATABASE_PATH"), "wishlists.db"))
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL != "" && !strings.HasPrefix(databaseURL, "postgres://") && !strings.HasPrefix(databaseURL, "postgresql://") {
+		return errors.New("DATABASE_URL must be a postgres:// or postgresql:// URL")
+	}
+	db, err := store.Open(cmp.Or(databaseURL, os.Getenv("DATABASE_PATH"), "wishlists.db"))
 	if err != nil {
 		return err
 	}

@@ -22,13 +22,16 @@ func (s *Store) Pick(ctx context.Context, wishlistID, winnerID, loserID string) 
 		return PickResult{}, err
 	}
 	defer tx.Rollback()
+	if err := s.lockWishlist(ctx, tx, wishlistID); err != nil {
+		return PickResult{}, err
+	}
 
 	var winnerPosition, loserPosition int
-	err = tx.QueryRowContext(ctx, `
+	err = tx.QueryRowContext(ctx, s.bind(`
 		SELECT winner.position, loser.position
 		FROM wishes AS winner JOIN wishes AS loser ON winner.wishlist_id = loser.wishlist_id
 		WHERE winner.wishlist_id = ? AND winner.id = ? AND loser.id = ?
-	`, wishlistID, winnerID, loserID).Scan(&winnerPosition, &loserPosition)
+	`), wishlistID, winnerID, loserID).Scan(&winnerPosition, &loserPosition)
 	if errors.Is(err, sql.ErrNoRows) {
 		return PickResult{}, ErrNotFound
 	}
@@ -37,11 +40,11 @@ func (s *Store) Pick(ctx context.Context, wishlistID, winnerID, loserID string) 
 	}
 	winnerAfter, loserAfter := winnerPosition, loserPosition
 	if winnerPosition > loserPosition {
-		_, err = tx.ExecContext(ctx, `
+		_, err = tx.ExecContext(ctx, s.bind(`
 			UPDATE wishes
 			SET position = CASE WHEN id = ? THEN ? ELSE position + 1 END
 			WHERE wishlist_id = ? AND position BETWEEN ? AND ?
-		`, winnerID, loserPosition, wishlistID, loserPosition, winnerPosition)
+		`), winnerID, loserPosition, wishlistID, loserPosition, winnerPosition)
 		if err != nil {
 			return PickResult{}, err
 		}

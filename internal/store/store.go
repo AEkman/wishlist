@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
@@ -17,75 +18,37 @@ var (
 )
 
 type Store struct {
-	db *sql.DB
+	db       *sql.DB
+	postgres bool
 }
 
 type Child struct {
-	ID   string
-	Name string
+	ID     string
+	Name   string
+	Number int64
 }
 
-const schema = `
-	CREATE TABLE IF NOT EXISTS children (
-		id TEXT NOT NULL PRIMARY KEY,
-		name TEXT NOT NULL
-	);
-	CREATE TABLE IF NOT EXISTS wishlists (
-		id TEXT NOT NULL PRIMARY KEY,
-		child_id TEXT NOT NULL REFERENCES children(id),
-		title TEXT NOT NULL,
-		share_id TEXT NOT NULL UNIQUE
-	);
-	CREATE INDEX IF NOT EXISTS wishlists_child_id ON wishlists(child_id);
-	CREATE TABLE IF NOT EXISTS wishes (
-		id TEXT NOT NULL PRIMARY KEY,
-		wishlist_id TEXT NOT NULL REFERENCES wishlists(id),
-		title TEXT NOT NULL,
-		description TEXT NOT NULL,
-		media_type TEXT NOT NULL,
-		image BLOB NOT NULL,
-		position INTEGER NOT NULL,
-		buyer TEXT NOT NULL DEFAULT ''
-	);
-	CREATE INDEX IF NOT EXISTS wishes_rank ON wishes(wishlist_id, position);
-`
-
 func Open(dsn string) (*Store, error) {
-	db, err := sql.Open("sqlite", dsn)
+	postgres := strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "postgresql://")
+	driver := "sqlite"
+	if postgres {
+		driver = "pgx"
+	}
+	db, err := sql.Open(driver, dsn)
 	if err != nil {
 		return nil, err
 	}
 	// Keep one connection for the in-memory database and serialize writes.
 	db.SetMaxOpenConns(1)
-	if err := initialize(db); err != nil {
+	initializeDB := initialize
+	if postgres {
+		initializeDB = initializePostgres
+	}
+	if err := initializeDB(db); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("initialize wishlist database: %w", err)
 	}
-	return &Store{db: db}, nil
-}
-
-func initialize(db *sql.DB) error {
-	tx, err := db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	if _, err := tx.Exec(schema); err != nil {
-		return err
-	}
-	var version int
-	if err := tx.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
-		return err
-	}
-	if version == 0 {
-		if _, err := tx.Exec("ALTER TABLE wishes ADD COLUMN image_revision INTEGER NOT NULL DEFAULT 0"); err != nil {
-			return err
-		}
-		if _, err := tx.Exec("PRAGMA user_version = 1"); err != nil {
-			return err
-		}
-	}
-	return tx.Commit()
+	return &Store{db: db, postgres: postgres}, nil
 }
 
 func (s *Store) Close() error { return s.db.Close() }
@@ -95,12 +58,18 @@ func (s *Store) CreateChild(ctx context.Context, name string) (Child, error) {
 	if name == "" {
 		return Child{}, ErrInvalid
 	}
-	id, err := newID()
-	if err != nil {
-		return Child{}, err
-	}
+	id := ChildID(name)
 	child := Child{ID: id, Name: name}
-	_, err = s.db.ExecContext(ctx, "INSERT INTO children (id, name) VALUES (?, ?)", child.ID, child.Name)
+	query := "INSERT INTO children (id, name, number) SELECT ?, ?, (SELECT COALESCE(MAX(number), 0) + 1 FROM children) WHERE NOT EXISTS (SELECT 1 FROM children WHERE id = ?) RETURNING number"
+	args := []any{id, name, id}
+	if s.postgres {
+		query = "INSERT INTO children (id, name) VALUES (?, ?) ON CONFLICT (id) DO NOTHING RETURNING number"
+		args = []any{id, name}
+	}
+	err := s.queryRowContext(ctx, query, args...).Scan(&child.Number)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Child{}, ErrInvalid
+	}
 	return child, err
 }
 
@@ -127,7 +96,7 @@ func requireAffectedRow(result sql.Result, err error) error {
 }
 
 func (s *Store) Children(ctx context.Context) ([]Child, error) {
-	rows, err := s.db.QueryContext(ctx, "SELECT id, name FROM children ORDER BY rowid")
+	rows, err := s.queryContext(ctx, "SELECT id, name, number FROM children ORDER BY number")
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +104,7 @@ func (s *Store) Children(ctx context.Context) ([]Child, error) {
 	var children []Child
 	for rows.Next() {
 		var child Child
-		if err := rows.Scan(&child.ID, &child.Name); err != nil {
+		if err := rows.Scan(&child.ID, &child.Name, &child.Number); err != nil {
 			return nil, err
 		}
 		children = append(children, child)
@@ -145,9 +114,35 @@ func (s *Store) Children(ctx context.Context) ([]Child, error) {
 
 func (s *Store) Child(ctx context.Context, id string) (Child, error) {
 	var child Child
-	err := s.db.QueryRowContext(ctx, "SELECT id, name FROM children WHERE id = ?", id).Scan(&child.ID, &child.Name)
+	err := s.queryRowContext(ctx, "SELECT id, name, number FROM children WHERE id = ?", id).Scan(&child.ID, &child.Name, &child.Number)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Child{}, ErrNotFound
 	}
 	return child, err
+}
+
+func (s *Store) ChildByNumber(ctx context.Context, number int64) (Child, error) {
+	var child Child
+	err := s.queryRowContext(ctx, "SELECT id, name, number FROM children WHERE number = ?", number).Scan(&child.ID, &child.Name, &child.Number)
+	if errors.Is(err, sql.ErrNoRows) {
+		return Child{}, ErrNotFound
+	}
+	return child, err
+}
+
+// ChildID creates a readable, stable key from a child's name.
+func ChildID(name string) string {
+	var slug strings.Builder
+	for _, r := range strings.ToLower(name) {
+		if unicode.IsLetter(r) || unicode.IsNumber(r) {
+			slug.WriteRune(r)
+		} else if slug.Len() > 0 {
+			slug.WriteByte('-')
+		}
+	}
+	id := strings.Trim(slug.String(), "-")
+	if id == "" {
+		return "barn"
+	}
+	return id
 }

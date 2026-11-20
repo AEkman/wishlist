@@ -8,10 +8,11 @@ import (
 )
 
 type Wishlist struct {
-	ID      string
-	ChildID string
-	Title   string
-	ShareID string
+	FamilyVisible bool
+	ID            string
+	ChildID       string
+	Title         string
+	ShareID       string
 }
 
 func (s *Store) CreateWishlist(ctx context.Context, childID, title string) (Wishlist, error) {
@@ -27,7 +28,7 @@ func (s *Store) CreateWishlist(ctx context.Context, childID, title string) (Wish
 	if err != nil {
 		return Wishlist{}, err
 	}
-	err = requireAffectedRow(s.db.ExecContext(ctx, `
+	err = requireAffectedRow(s.execContext(ctx, `
 		INSERT INTO wishlists (id, child_id, title, share_id)
 		SELECT ?, id, ?, ? FROM children WHERE id = ?
 	`, id, title, shareID, childID))
@@ -38,9 +39,8 @@ func (s *Store) CreateWishlist(ctx context.Context, childID, title string) (Wish
 }
 
 func (s *Store) Wishlists(ctx context.Context, childID string) ([]Wishlist, error) {
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, child_id, title, share_id FROM wishlists WHERE child_id = ? ORDER BY rowid
-	`, childID)
+	rows, err := s.queryContext(ctx, `
+		SELECT id, child_id, title, share_id, family_visible FROM wishlists WHERE child_id = ? ORDER BY `+s.wishlistOrder(), childID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *Store) Wishlists(ctx context.Context, childID string) ([]Wishlist, erro
 	var lists []Wishlist
 	for rows.Next() {
 		var list Wishlist
-		if err := rows.Scan(&list.ID, &list.ChildID, &list.Title, &list.ShareID); err != nil {
+		if err := rows.Scan(&list.ID, &list.ChildID, &list.Title, &list.ShareID, &list.FamilyVisible); err != nil {
 			return nil, err
 		}
 		lists = append(lists, list)
@@ -57,16 +57,16 @@ func (s *Store) Wishlists(ctx context.Context, childID string) ([]Wishlist, erro
 }
 
 func (s *Store) Wishlist(ctx context.Context, id string) (Wishlist, error) {
-	return scanWishlist(s.db.QueryRowContext(ctx, "SELECT id, child_id, title, share_id FROM wishlists WHERE id = ?", id))
+	return scanWishlist(s.queryRowContext(ctx, "SELECT id, child_id, title, share_id, family_visible FROM wishlists WHERE id = ?", id))
 }
 
 func (s *Store) SharedWishlist(ctx context.Context, shareID string) (Wishlist, error) {
-	return scanWishlist(s.db.QueryRowContext(ctx, "SELECT id, child_id, title, share_id FROM wishlists WHERE share_id = ?", shareID))
+	return scanWishlist(s.queryRowContext(ctx, "SELECT id, child_id, title, share_id, family_visible FROM wishlists WHERE share_id = ?", shareID))
 }
 
 func scanWishlist(row *sql.Row) (Wishlist, error) {
 	var list Wishlist
-	err := row.Scan(&list.ID, &list.ChildID, &list.Title, &list.ShareID)
+	err := row.Scan(&list.ID, &list.ChildID, &list.Title, &list.ShareID, &list.FamilyVisible)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Wishlist{}, ErrNotFound
 	}
