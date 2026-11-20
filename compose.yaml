@@ -1,0 +1,23 @@
+services:
+  wishlist:
+    build: .
+    restart: unless-stopped
+    environment:
+      LISTEN_ADDR: ":8080"
+      FAMILY_PIN: "${FAMILY_PIN:?Set FAMILY_PIN to a 4 to 12 digit PIN}"
+      DATABASE_PATH: /data/wishlist.db
+      BASE_URL: "${BASE_URL:-}"
+      RANKING_DEBUG: "${RANKING_DEBUG:-0}"
+    ports:
+      - "127.0.0.1:${PORT:-8080}:8080"
+    volumes:
+      - wishlist_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  wishlist_data:
