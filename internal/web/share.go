@@ -9,7 +9,7 @@ import (
 )
 
 func (s server) shared(c fiber.Ctx) error {
-	list, err := s.db.SharedWishlist(c.Context(), c.Params("share"))
+	list, err := s.sharedWishlist(c)
 	if err != nil {
 		return err
 	}
@@ -21,10 +21,11 @@ func (s server) showShared(c fiber.Ctx, list store.Wishlist, message string) err
 	if err != nil {
 		return err
 	}
-	return s.show(c, page{
-		View: "share", Title: list.Title, Wishlist: list, Error: message,
-		Wishes: inRankOrder(wishes),
-	})
+	data := page{View: "share", Title: list.Title, Wishlist: list, Error: message, Wishes: inRankOrder(wishes)}
+	if err := s.familyNavigation(c, &data); err != nil {
+		return err
+	}
+	return s.show(c, data)
 }
 
 func (s server) buyForm(c fiber.Ctx) error {
@@ -60,7 +61,7 @@ func (s server) buy(c fiber.Ctx) error {
 	case err != nil:
 		return err
 	}
-	return redirect(c, "/"+data.Wishlist.ShareID)
+	return redirect(c, data.SharedListURL)
 }
 
 func (s server) clearPurchase(c fiber.Ctx) error {
@@ -71,11 +72,11 @@ func (s server) clearPurchase(c fiber.Ctx) error {
 	if err := s.db.ClearBought(c.Context(), data.Wishlist.ID, data.Wish.ID); err != nil {
 		return err
 	}
-	return redirect(c, "/"+data.Wishlist.ShareID)
+	return redirect(c, data.SharedListURL)
 }
 
 func (s server) purchasePage(c fiber.Ctx, view string) (page, error) {
-	list, err := s.db.SharedWishlist(c.Context(), c.Params("share"))
+	list, err := s.sharedWishlist(c)
 	if err != nil {
 		return page{}, err
 	}
@@ -83,5 +84,9 @@ func (s server) purchasePage(c fiber.Ctx, view string) (page, error) {
 	if err != nil {
 		return page{}, err
 	}
-	return page{View: view, Title: list.Title, Wishlist: list, Wish: wish}, nil
+	data := page{View: view, Title: list.Title, Wishlist: list, Wish: wish, SharedListURL: "/" + list.ShareID}
+	if err := s.familyNavigation(c, &data); err != nil {
+		return page{}, err
+	}
+	return data, nil
 }

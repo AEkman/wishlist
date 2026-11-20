@@ -13,6 +13,7 @@ import (
 
 	"github.com/AEkman/wishlist/internal/store"
 	"github.com/cucumber/godog"
+	"golang.org/x/net/html"
 )
 
 const newWishTitle = "New wish"
@@ -40,7 +41,7 @@ func (a *acceptance) registerUploadSteps(sc *godog.ScenarioContext) {
 	sc.When(`^I submit a camera picture with the title "([^"]+)"$`, func(title string) error {
 		u.uploadedTitle = title
 		u.uploadedDescription = "From the camera"
-		return u.submitPicture("camera", title, u.uploadedDescription, image.Rect(0, 0, 2, 1))
+		return u.submitPicture("image", title, u.uploadedDescription, image.Rect(0, 0, 2, 1))
 	})
 	sc.When(`^I add a wish with a picture and title$`, func() error { return u.addPicture(newWishTitle, "") })
 	sc.Then(`^"([^"]+)" is first$`, u.wishIsFirst)
@@ -90,20 +91,22 @@ func (u *uploadAcceptance) addPicture(title, description string) error {
 }
 
 func (u *uploadAcceptance) checkPictureSources() error {
-	sources := map[string]string{}
-	for _, input := range htmlNodes(u.doc, isElement("input")) {
-		if htmlAttr(input, "type") != "file" {
-			continue
-		}
-		for _, attr := range input.Attr {
-			if attr.Key == "required" {
-				return fmt.Errorf("each picture source must work without the other source")
-			}
-		}
-		sources[htmlAttr(input, "name")] = htmlAttr(input, "capture")
+	files := htmlNodes(u.doc, func(node *html.Node) bool {
+		return isElement("input")(node) && htmlAttr(node, "type") == "file"
+	})
+	if len(files) != 1 || htmlAttr(files[0], "name") != "image" {
+		return fmt.Errorf("expected one file picker for existing images, found %d", len(files))
 	}
-	if len(sources) != 2 || sources["camera"] != "environment" || sources["image"] != "" {
-		return fmt.Errorf("want a rear camera and a separate gallery input, got %v", sources)
+	for _, attr := range files[0].Attr {
+		if attr.Key == "capture" || attr.Key == "required" {
+			return fmt.Errorf("unexpected attribute %q on the file picker", attr.Key)
+		}
+	}
+	buttons := htmlNodes(u.doc, func(node *html.Node) bool {
+		return isElement("button")(node) && htmlAttr(node, "type") == "button" && htmlText(node) == "Ta kort"
+	})
+	if len(buttons) == 0 || len(htmlNodes(u.doc, isElement("video"))) != 1 {
+		return fmt.Errorf("expected a camera button and a live preview")
 	}
 	return nil
 }

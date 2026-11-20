@@ -88,7 +88,7 @@ func (s server) pick(c fiber.Ctx) error {
 			return err
 		}
 		location, err := json.Marshal(map[string]string{
-			"path": path, "target": "#screen", "select": "#screen", "swap": "outerHTML show:top",
+			"path": path, "target": "#screen", "select": "#screen", "swap": "outerHTML swap:150ms show:top",
 		})
 		if err != nil {
 			return err

@@ -6,27 +6,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fcf9f4">
   <title>{{with .Title}}{{.}} · {{end}}Önskelistan</title>
-  <meta name="htmx-config" content='{"allowEval":false,"allowScriptTags":false,"includeIndicatorStyles":false,"historyCacheSize":0,"historyRestoreAsHxRequest":false,"reportValidityOfForms":true,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"(400|409|422)","swap":true},{"code":"[45]..","swap":false,"error":true}]}'>
+  <meta name="htmx-config" content='{"includeIndicatorCSS":false,"noSwap":[204,304,"4xx","5xx"]}'>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/wish-camera.js" type="module"></script>
+  <script src="/static/child-dialog.js" type="module"></script>
   {{if .RankingDebug}}<script src="/static/ranking-debug.js" defer></script>{{end}}
 </head>
-<body hx-boost="true" hx-target="#screen" hx-select="#screen" hx-swap="outerHTML show:top">
+<body hx-status:400:inherited="swap:outerHTML" hx-status:409:inherited="swap:outerHTML" hx-status:422:inherited="swap:outerHTML" hx-boost:inherited="true" hx-target:inherited="#screen" hx-select:inherited="#screen" hx-swap:inherited="outerHTML show:top">
   <a class="skip-link" href="#content" hx-boost="false">Hoppa till innehållet</a>
-  <div id="screen" data-screen="{{.View}}" hx-sync="this:drop">
-    <header class="site-header">
-      {{if or (eq .View "share") (eq .View "purchase") (eq .View "clear")}}
-      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>Önskelistan</span>
-      {{else}}
-      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true"></span>Önskelistan</a>
-      {{end}}
-    </header>
+  <div id="screen" data-screen="{{.View}}" hx-sync:inherited="this:drop">
+    {{if ne .View "children"}}<header class="site-header">
+      <a class="brand" href="{{if .BrandURL}}{{.BrandURL}}{{else}}/{{end}}" aria-label="Önskelistan – startsidan"><span class="brand-mark" aria-hidden="true"></span>Önskelistan</a>
+    </header>{{end}}
     <main id="content" class="screen-motion">
+      {{if ne .View "children"}}{{template "breadcrumbs" .}}{{end}}
       {{with .Error}}<p class="notice" role="alert">{{.}}</p>{{end}}
-      {{if eq .View "children"}}{{template "children" .}}
+      {{if eq .View "unlock"}}{{template "unlock" .}}
+      {{else if eq .View "children"}}{{template "children" .}}
       {{else if eq .View "lists"}}{{template "lists" .}}
       {{else if eq .View "compare"}}{{template "compare" .}}
       {{else if eq .View "ranked"}}{{template "ranked" .}}
+      {{else if eq .View "family"}}{{template "family" .}}
+      {{else if eq .View "family-lists"}}{{template "family-lists" .}}
       {{else if eq .View "share"}}{{template "share" .}}
       {{else if or (eq .View "add") (eq .View "edit")}}{{template "wish-form" .}}
       {{else if or (eq .View "purchase") (eq .View "clear")}}{{template "purchase-form" .}}
@@ -38,36 +41,104 @@
 </html>
 {{end}}
 
-{{define "children"}}
-<div class="page-heading">
-  <h1 tabindex="-1" autofocus>Vems önskelista?</h1>
-</div>
-{{if .Children}}
-<ul class="choice-grid">
-  {{range .Children}}
-  <li>
-    <a class="choice-card" href="/children/{{.ID}}">
-      <span class="choice-mark" aria-hidden="true"></span>
-      <span>{{.Name}}</span>
-    </a>
-  </li>
-  {{end}}
-</ul>
+{{define "breadcrumbs"}}
+<nav class="breadcrumbs" aria-label="Brödsmulor">
+  <ol>
+    {{range .Breadcrumbs}}
+    <li>{{if .URL}}<a href="{{.URL}}">{{.Label}}</a>{{else}}<span aria-current="page">{{.Label}}</span>{{end}}</li>
+    {{end}}
+  </ol>
+</nav>
 {{end}}
-<form class="creation-form" action="/children" method="post" hx-push-url="true">
-  <label for="child-name">Barnets namn</label>
-  <div class="inline-fields">
-    <input id="child-name" name="name" type="text" required>
-    <button type="submit">Lägg till barn</button>
+
+{{define "children"}}
+<section class="home-hero" aria-labelledby="home-title">
+  <div class="home-hero-copy">
+    <h1 id="home-title" tabindex="-1" autofocus>Små önskningar.<br><em>Stora leenden.</em></h1>
+    <p>Samla barnens önskningar, hitta deras favoriter och dela listan med familjen.</p>
+    <a class="button home-cta" href="#children" hx-boost="false">
+      {{if .Children}}Välj ett barn{{else}}Lägg till första barnet{{end}} <span aria-hidden="true">↓</span>
+    </a>
   </div>
-</form>
+  <div class="home-hero-art">
+    <img src="/static/wishlist-hero.webp" width="1440" height="960" alt="" fetchpriority="high">
+  </div>
+</section>
+
+<div class="home-content{{if not .Children}} home-content--empty{{end}}">
+  <section aria-labelledby="children">
+    <h2 id="children" tabindex="-1">{{if .Children}}Vems önskelista?{{else}}Börja med ett barn{{end}}</h2>
+    <ul class="choice-grid">
+      {{range .Children}}
+      <li>
+        <a class="choice-card" href="{{index $.ChildURLs .ID}}">
+          <span class="choice-mark" aria-hidden="true"></span>
+          <span>{{.Name}}</span>
+        </a>
+      </li>
+      {{end}}
+      <li>
+        <button class="choice-card add-child-card" type="button" aria-haspopup="dialog" aria-controls="add-child-dialog" data-add-child-open>
+          <span class="add-child-mark" aria-hidden="true">+</span>
+          <span>Lägg till barn</span>
+        </button>
+      </li>
+    </ul>
+  </section>
+
+  {{template "family-sharing" .}}
+
+  <dialog class="child-dialog" id="add-child-dialog" aria-labelledby="add-child-title">
+  <form class="home-form" action="/children" method="post" hx-push-url="true" aria-labelledby="add-child-title">
+    <h2 id="add-child-title">Lägg till ett barn</h2>
+    <label for="child-name">Barnets namn</label>
+    <input id="child-name" name="name" type="text" required>
+    <div class="actions">
+      <button type="submit">Lägg till barn</button>
+      <button class="secondary" type="button" data-add-child-close>Avbryt</button>
+    </div>
+  </form>
+  </dialog>
+  <noscript>
+    <form class="creation-form" action="/children" method="post">
+      <label for="child-name-fallback">Barnets namn</label>
+      <input id="child-name-fallback" name="name" type="text" required>
+      <button type="submit">Lägg till barn</button>
+    </form>
+  </noscript>
+
+  {{if not .Children}}
+  <section class="home-guide" aria-labelledby="home-guide-title">
+    <h2 id="home-guide-title">Så funkar det</h2>
+    <ol class="home-steps" role="list">
+      <li>
+        <span class="home-step-mark" aria-hidden="true">✦</span>
+        <h3>Samla</h3>
+        <p>Skapa en lista och lägg in önskningar med bilder.</p>
+      </li>
+      <li>
+        <span class="home-step-mark" aria-hidden="true">♡</span>
+        <h3>Jämför</h3>
+        <p>Låt barnet välja sin favorit bland två önskningar i taget.</p>
+      </li>
+      <li>
+        <span class="home-step-mark" aria-hidden="true">↗</span>
+        <h3>Dela</h3>
+        <p>Skicka länken så kan familjen markera vilka presenter de har köpt.</p>
+      </li>
+    </ol>
+  </section>
+  {{end}}
+</div>
 {{end}}
 
 {{define "lists"}}
-<a class="back-link" href="/">Alla barn</a>
-<div class="page-heading">
-  <p class="context">Önskelistor</p>
-  <h1 tabindex="-1" autofocus>{{.Child.Name}}</h1>
+<div class="page-heading page-heading--with-actions">
+  <div>
+    <p class="context">Önskelistor</p>
+    <h1 tabindex="-1" autofocus>{{.Child.Name}}</h1>
+  </div>
+  <div class="actions">{{template "family-sharing" .}}</div>
 </div>
 {{if .Wishlists}}
 <ul class="choice-grid">
@@ -77,11 +148,12 @@
       <span class="choice-mark choice-mark--list" aria-hidden="true"></span>
       <span>{{.Title}}</span>
     </a>
+    {{template "visibility-setting" .}}
   </li>
   {{end}}
 </ul>
 {{end}}
-<form class="creation-form" action="/children/{{.Child.ID}}/wishlists" method="post" hx-push-url="true">
+<form class="creation-form" action="{{index .ChildURLs .Child.ID}}/wishlists" method="post" hx-push-url="true">
   <label for="list-title">Listans namn</label>
   <div class="inline-fields">
     <input id="list-title" name="title" type="text" required>
@@ -91,7 +163,6 @@
 {{end}}
 
 {{define "compare"}}
-<a class="back-link" href="/children/{{.Wishlist.ChildID}}">Alla önskelistor</a>
 <div class="page-heading page-heading--with-actions">
   <div>
     {{if .HasPair}}
@@ -109,13 +180,13 @@
 {{if .HasPair}}
   {{if .Upload}}<p class="upload-progress">Jämför din nya önskan · {{.Remaining}} kvar</p>{{end}}
   <div class="pair">
-    <form class="pair-option" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
+    <form class="pair-option" hx-swap="outerHTML swap:150ms show:top" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
       {{template "upload-fields" .}}
       <input type="hidden" name="winner" value="{{.Left.ID}}">
       <input type="hidden" name="loser" value="{{.Right.ID}}">
       {{template "pick-button" .Left}}
     </form>
-    <form class="pair-option" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
+    <form class="pair-option" hx-swap="outerHTML swap:150ms show:top" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
       {{template "upload-fields" .}}
       <input type="hidden" name="winner" value="{{.Right.ID}}">
       <input type="hidden" name="loser" value="{{.Left.ID}}">
@@ -154,31 +225,36 @@
   <span class="wish-image"><img src="/images/{{.ID}}?v={{.ImageRevision}}" alt=""></span>
   <span class="wish-copy">
     <span class="pick-title">{{.Title}}</span>
-    {{with .Description}}<span class="wish-description">{{.}}</span>{{end}}
   </span>
 </button>
 {{end}}
 
 {{define "ranked"}}
-<a class="back-link" href="/lists/{{.Wishlist.ID}}">Till jämförelsen</a>
 <div class="page-heading page-heading--with-actions">
   <div>
     <p class="context">Önskelista</p>
     <h1 tabindex="-1" autofocus>{{.Wishlist.Title}}</h1>
   </div>
-  <a class="button" href="/lists/{{.Wishlist.ID}}/wishes/new">Lägg till en önskan</a>
+  <div class="actions ranked-actions">
+    <a class="button" href="/lists/{{.Wishlist.ID}}/wishes/new">Lägg till en önskan</a>
+    {{with .ShareURL}}
+    <details class="share-action">
+      <summary class="button">Dela önskelistan</summary>
+      <div class="share-panel">
+        <label for="share-url">Delningslänk</label>
+        <input id="share-url" type="url" readonly value="{{.}}">
+      </div>
+    </details>
+    {{end}}
+    {{template "family-sharing" .}}
+  </div>
 </div>
-{{with .ShareURL}}
-<details class="sharing">
-  <summary>Dela önskelistan</summary>
-  <label for="share-url">Delningslänk</label>
-  <input id="share-url" type="url" readonly value="{{.}}">
-</details>
-{{end}}
+{{template "visibility-setting" .Wishlist}}
+<p class="ranking-explanation">Önskningarna visas i barnets favoritordning.</p>
 {{if .Wishes}}
 <ol class="ranked-list">
   {{range .Wishes}}
-  <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
+  <li class="ranked-card" data-rank="{{.Rank}}">
     <div class="wish-image">
       <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
     </div>
@@ -193,29 +269,21 @@
 {{else}}
 <p class="empty-note">Listan är tom.</p>
 {{end}}
-{{with .OtherWishes}}
-<details class="sharing">
-  <summary>Ändra övriga önskningar</summary>
-  <ul>
-    {{range .}}
-    <li><a class="text-link" href="/lists/{{.WishlistID}}/wishes/{{.ID}}/edit">{{.Title}}</a></li>
-    {{end}}
-  </ul>
-</details>
-{{end}}
 {{end}}
 
 {{define "share"}}
+{{template "shared-navigation" .}}
 <div class="page-heading">
-  <p class="context">Delad önskelista</p>
+  <p class="context">{{.Child.Name}} · Delad önskelista</p>
   <h1 tabindex="-1" autofocus>{{.Wishlist.Title}}</h1>
 </div>
+<p class="ranking-explanation">Önskningarna visas i barnets favoritordning.</p>
 {{if .Wishes}}
 <ol class="ranked-list">
   {{range .Wishes}}
-  <li class="ranked-card{{if .Large}} ranked-card--large{{end}}" data-rank="{{.Rank}}">
+  <li class="ranked-card" data-rank="{{.Rank}}">
     <div class="wish-image">
-      <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
+      <img src="{{$.SharedListURL}}/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
       {{with .Buyer}}
       <div class="purchase-overlay"><strong>Köpt</strong><span>av {{.}}</span></div>
       {{end}}
@@ -223,12 +291,12 @@
     <div class="wish-copy">
       <div class="ranked-title"><span class="rank-number" aria-hidden="true">{{.Rank}}</span><h2>{{.Title}}</h2></div>
       {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}
-      <form action="/{{$.Wishlist.ShareID}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}" method="get" hx-boost="false">
+      <form action="{{$.SharedListURL}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}" method="get" hx-boost="false">
         <label class="purchase-control">
           <input type="checkbox"
                  aria-label="{{if .Buyer}}Avmarkera{{else}}Markera{{end}} {{.Title}} som köpt"
                  {{if .Buyer}}checked{{end}}
-                 hx-get="/{{$.Wishlist.ShareID}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}"
+                 hx-get="{{$.SharedListURL}}/wishes/{{.ID}}/{{if .Buyer}}clear{{else}}buy{{end}}"
                  hx-trigger="change" hx-push-url="true">
           {{if .Buyer}}Avmarkera som köpt{{else}}Markera som köpt{{end}}
         </label>
@@ -244,7 +312,6 @@
 {{end}}
 
 {{define "wish-form"}}
-<a class="back-link" href="/lists/{{.Wishlist.ID}}{{if eq .View "edit"}}/ranked{{end}}">Till önskelistan</a>
 <div class="page-heading">
   <p class="context">{{.Wishlist.Title}}</p>
   <h1 tabindex="-1" autofocus>{{if eq .View "edit"}}Ändra önskan{{else}}Lägg till en önskan{{end}}</h1>
@@ -256,13 +323,23 @@
   <fieldset class="image-options">
     <legend>{{if eq .View "edit"}}Byt bild (valfritt){{else}}Bild{{end}}</legend>
     <div>
-      <label for="wish-camera">Ta bild</label>
-      <input id="wish-camera" type="file" name="camera" accept="image/*" capture="environment">
-    </div>
-    <div>
       <label for="wish-image">Välj bild</label>
       <input id="wish-image" type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp">
     </div>
+    <div class="wish-camera" data-wish-camera hidden>
+      <button class="secondary" type="button" data-camera-open aria-haspopup="dialog" aria-controls="wish-camera">Ta kort</button>
+      <p class="camera-status" data-camera-note role="status"></p>
+      <dialog class="camera-dialog" id="wish-camera" aria-labelledby="wish-camera-title">
+        <h2 id="wish-camera-title">Kamera</h2>
+        <p class="camera-status" data-camera-loading role="status"></p>
+        <video autoplay muted playsinline aria-label="Kamerans förhandsvisning"></video>
+        <div class="actions">
+          <button type="button" data-camera-snapshot disabled>Ta kort</button>
+          <button class="secondary" type="button" data-camera-close autofocus>Avbryt</button>
+        </div>
+      </dialog>
+    </div>
+    <div class="camera-photo" data-camera-photo hidden></div>
   </fieldset>
   <label for="wish-title">Titel</label>
   <input id="wish-title" name="title" type="text" required value="{{.Wish.Title}}">
@@ -276,19 +353,111 @@
 {{end}}
 
 {{define "purchase-form"}}
-<a class="back-link" href="/{{.Wishlist.ShareID}}">Till den delade önskelistan</a>
 <div class="page-heading">
-  <p class="context">{{.Wish.Title}}</p>
+  <p class="context">{{.Child.Name}} · {{.Wishlist.Title}} · {{.Wish.Title}}</p>
   <h1 tabindex="-1" autofocus>{{if eq .View "clear"}}Avmarkera som köpt?{{else}}Markera som köpt{{end}}</h1>
 </div>
-<form class="panel-form" action="/{{.Wishlist.ShareID}}/wishes/{{.Wish.ID}}/{{if eq .View "clear"}}clear{{else}}buy{{end}}" method="post" hx-push-url="true">
+<form class="panel-form" action="{{.SharedListURL}}/wishes/{{.Wish.ID}}/{{if eq .View "clear"}}clear{{else}}buy{{end}}" method="post" hx-push-url="true">
   {{if eq .View "purchase"}}
   <label for="buyer">Ditt namn</label>
   <input id="buyer" type="text" name="name" autocomplete="name" required>
   {{end}}
   <div class="actions">
     <button type="submit">{{if eq .View "clear"}}Avmarkera{{else}}Spara köpet{{end}}</button>
-    <a class="button secondary" href="/{{.Wishlist.ShareID}}">Avbryt</a>
+    <a class="button secondary" href="{{.SharedListURL}}">Avbryt</a>
   </div>
 </form>
+{{end}}
+
+{{define "unlock"}}
+<div class="page-heading"><h1 tabindex="-1" autofocus>Lås upp önskelistan</h1></div>
+<form class="panel-form" action="/unlock" method="post" hx-boost="false">
+  <input type="hidden" name="next" value="{{.Next}}">
+  <label for="family-pin">Familjens PIN-kod</label>
+  <input id="family-pin" type="password" name="pin" inputmode="numeric" autocomplete="current-password" required>
+  <button type="submit">Lås upp</button>
+</form>
+{{end}}
+
+{{define "family-sharing"}}
+{{with .FamilyURL}}
+<details class="share-action family-sharing">
+  <summary class="button">Dela alla</summary>
+  <div class="share-panel">
+    <p>En gemensam länk till de listor du väljer att visa.</p>
+    <label for="family-share-url">Familjelänk</label>
+    <input id="family-share-url" type="url" readonly value="{{.}}">
+  </div>
+</details>
+{{end}}
+{{end}}
+
+{{define "visibility-setting"}}
+<form class="visibility-setting" action="/lists/{{.ID}}/sharing" method="post" hx-post="/lists/{{.ID}}/sharing" hx-trigger="change" hx-push-url="false" hx-sync="this:queue last">
+  <label>
+    <input type="checkbox" name="visible" value="true" {{if .FamilyVisible}}checked{{end}}>
+    <span>Visa på familjens delade sida</span>
+  </label>
+</form>
+{{end}}
+
+{{define "family"}}
+<div class="page-heading">
+  <p class="context">Delade önskelistor</p>
+  <h1 tabindex="-1" autofocus>Familjens önskelistor</h1>
+</div>
+{{if .SharedChildren}}
+<p class="family-intro">Välj ett barn för att se önskelistorna.</p>
+<ul class="choice-grid">
+  {{range .SharedChildren}}
+  <li>
+    <a class="choice-card" href="{{index $.SharedChildURLs .ID}}">
+      <span class="choice-mark" aria-hidden="true"></span>
+      <span>{{.Name}}</span>
+    </a>
+  </li>
+  {{end}}
+</ul>
+{{else}}
+<p class="empty-note">Inga önskelistor delas just nu. Kom tillbaka senare.</p>
+{{end}}
+{{end}}
+
+{{define "family-lists"}}
+{{template "shared-navigation" .}}
+<div class="page-heading">
+  <p class="context">Delade önskelistor</p>
+  <h1 tabindex="-1" autofocus>{{.Child.Name}}</h1>
+</div>
+<ul class="choice-grid">
+  {{range .SharedLists}}
+  <li>
+    <a class="choice-card" href="{{index $.SharedListURLs .ID}}">
+      <span class="choice-mark choice-mark--list" aria-hidden="true"></span>
+      <span>{{.Title}}</span>
+    </a>
+  </li>
+  {{end}}
+</ul>
+{{end}}
+
+{{define "shared-navigation"}}
+{{if .FamilyURL}}
+<nav class="shared-navigation" aria-label="Välj barn">
+  <ul>
+    {{range .SharedChildren}}
+    <li><a href="{{index $.SharedChildURLs .ID}}" {{if eq $.Child.ID .ID}}aria-current="true"{{end}}>{{.Name}}</a></li>
+    {{end}}
+  </ul>
+</nav>
+{{if and .Wishlist.ID (gt (len .SharedLists) 1)}}
+<nav class="shared-navigation shared-navigation--lists" aria-label="Välj önskelista">
+  <ul>
+    {{range .SharedLists}}
+    <li><a href="{{index $.SharedListURLs .ID}}" {{if eq $.Wishlist.ID .ID}}aria-current="page"{{end}}>{{.Title}}</a></li>
+    {{end}}
+  </ul>
+</nav>
+{{end}}
+{{end}}
 {{end}}

@@ -31,7 +31,7 @@ Feature: Rank wishes by comparing two at a time
   Scenario: Open the ranked view from a comparison
     Given I am comparing wishes in a wishlist with twelve wishes
     When I select "Visa önskelistan"
-    Then I see ranks 1 through 10 in order
+    Then I see ranks 1 through 12 in order
     And the wishes appear in a single column
-    And the first five wishes have larger cards than the next five
+    And all wishes use the same card style
     And the comparison is hidden

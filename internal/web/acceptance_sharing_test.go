@@ -48,15 +48,6 @@ func (a *acceptance) registerSharingSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^all twelve wishes appear in rank order$`, func() error {
 		return a.expectSharedRanks(sharingWishTitles(12)...)
 	})
-	sc.Step(`^the first five wishes have larger cards than the rest$`, func() error {
-		for index, card := range a.sharedWishCards() {
-			large := slices.Contains(strings.Fields(htmlAttr(card, "class")), "ranked-card--large")
-			if large != (index < 5) {
-				return fmt.Errorf("rank %d has incorrect card size", index+1)
-			}
-		}
-		return nil
-	})
 	sc.Step(`^I can mark a wish as bought$`, func() error {
 		_, err := a.purchaseCheckboxAction("LEGO", "buy")
 		return err

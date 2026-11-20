@@ -116,9 +116,6 @@ func (s server) editPage(c fiber.Ctx) (page, error) {
 	return page{View: "edit", Title: "Ändra önskan", Wishlist: list, Wish: wish}, nil
 }
 
-const personalRankLimit = 10
-const featuredWishCount = 5
-
 func (s server) ranked(c fiber.Ctx) error {
 	list, err := s.db.Wishlist(c.Context(), c.Params("list"))
 	if err != nil {
@@ -132,19 +129,17 @@ func (s server) ranked(c fiber.Ctx) error {
 	if baseURL == "" {
 		baseURL = c.Scheme() + "://" + c.Host()
 	}
-	featured := min(len(wishes), personalRankLimit)
 	return s.show(c, page{
 		View: "ranked", Title: list.Title, Wishlist: list,
-		ShareURL:    baseURL + "/" + list.ShareID,
-		Wishes:      inRankOrder(wishes[:featured]),
-		OtherWishes: wishes[featured:],
+		ShareURL: baseURL + "/" + list.ShareID,
+		Wishes:   inRankOrder(wishes),
 	})
 }
 
 func inRankOrder(wishes []store.Wish) []rankedWish {
 	ranks := make([]rankedWish, len(wishes))
 	for i, wish := range wishes {
-		ranks[i] = rankedWish{Wish: wish, Rank: i + 1, Large: i < featuredWishCount}
+		ranks[i] = rankedWish{Wish: wish, Rank: i + 1}
 	}
 	return ranks
 }

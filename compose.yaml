@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
     environment:
       LISTEN_ADDR: ":8080"
+      FAMILY_PIN: "${FAMILY_PIN:?Set FAMILY_PIN to a 4 to 12 digit PIN}"
       DATABASE_PATH: /data/wishlist.db
       BASE_URL: "${BASE_URL:-}"
       RANKING_DEBUG: "${RANKING_DEBUG:-0}"

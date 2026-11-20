@@ -33,9 +33,14 @@ func TestRankingDebugReportsEachPickToHTMX(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if body := readBody(t, res); !strings.Contains(body, "/static/ranking-debug.js") || res.Header.Get("HX-Trigger") != "" {
+	body := readBody(t, res)
+	if !strings.Contains(body, "/static/ranking-debug.js") || res.Header.Get("HX-Trigger") != "" {
 		t.Error("comparison page should load the debug script without logging a pick")
 	}
+	if strings.Count(body, `hx-swap="outerHTML swap:150ms show:top"`) != 2 {
+		t.Fatal("both comparison choices must allow the outgoing fade before replacement")
+	}
+
 	type ranks struct {
 		WinnerBefore int `json:"winnerBefore"`
 		WinnerAfter  int `json:"winnerAfter"`
@@ -55,11 +60,11 @@ func TestRankingDebugReportsEachPickToHTMX(t *testing.T) {
 		if res.StatusCode != http.StatusOK {
 			t.Fatalf("HTMX pick returned %d, want 200", res.StatusCode)
 		}
-		var destination struct{ Path, Target, Select string }
+		var destination struct{ Path, Target, Select, Swap string }
 		if err := json.Unmarshal([]byte(res.Header.Get("HX-Location")), &destination); err != nil {
 			t.Fatal(err)
 		}
-		if destination.Path != path || destination.Target != "#screen" || destination.Select != "#screen" {
+		if destination.Path != path || destination.Target != "#screen" || destination.Select != "#screen" || destination.Swap != "outerHTML swap:150ms show:top" {
 			t.Fatalf("HTMX destination = %+v", destination)
 		}
 		var event map[string]json.RawMessage

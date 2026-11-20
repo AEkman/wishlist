@@ -80,13 +80,13 @@ func (a *acceptance) registerRankingSteps(sc *godog.ScenarioContext) {
 		return a.get(a.listPath())
 	})
 	sc.When(`^I select "Visa önskelistan"$`, func() error { return a.clickLink("Visa önskelistan") })
-	sc.Then(`^I see ranks 1 through 10 in order$`, func() error {
+	sc.Then(`^I see ranks 1 through 12 in order$`, func() error {
 		if err := a.expectScreen("ranked"); err != nil {
 			return err
 		}
 		cards := a.rankedCards()
-		if len(cards) != 10 {
-			return fmt.Errorf("found %d ranked cards, want 10", len(cards))
+		if len(cards) != 12 {
+			return fmt.Errorf("found %d ranked cards, want 12", len(cards))
 		}
 		for i, card := range cards {
 			if got := htmlAttr(card, "data-rank"); got != strconv.Itoa(i+1) {
@@ -95,10 +95,10 @@ func (a *acceptance) registerRankingSteps(sc *godog.ScenarioContext) {
 		}
 		return nil
 	})
-	sc.Then(`^the first five wishes have larger cards than the next five$`, func() error {
+	sc.Then(`^all wishes use the same card style$`, func() error {
 		for i, card := range a.rankedCards() {
-			if hasClass(card, "ranked-card--large") != (i < 5) {
-				return fmt.Errorf("wrong card size at rank %d", i+1)
+			if htmlAttr(card, "class") != "ranked-card" {
+				return fmt.Errorf("rank %d has a different card style", i+1)
 			}
 		}
 		return nil
