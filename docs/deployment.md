@@ -10,7 +10,7 @@ Workflowet finns i `.github/workflows/build.yaml`.
 
 Vid en pull request mot `main` körs:
 
-- Go-tester med både SQLite och en tillfällig PostgreSQL 18-databas.
+- Go-tester med både SQLite och en tillfällig PostgreSQL 18.7- och 19.0-databas.
 - `go vet`, formatkontroll och kontroll av `go.mod` och `go.sum`.
 - Containerbygge för `linux/amd64` och `linux/arm64`.
 

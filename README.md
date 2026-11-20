@@ -24,7 +24,7 @@ Visitors with a shared link do not need the family PIN. They can mark or unmark 
 
 ## Develop and test
 
-Use Go 1.26 or later. Run `go run ./cmd/wishlist` to start the app. Set `LISTEN_ADDR` to change the default address `:8080`. Set `DATABASE_PATH` to change the default SQLite file `wishlists.db`. Set `FAMILY_PIN` to your 4 to 12 digit PIN before starting the app.
+Use Go 1.27.4. Run `go run ./cmd/wishlist` to start the app. Set `LISTEN_ADDR` to change the default address `:8080`. Set `DATABASE_PATH` to change the default SQLite file `wishlists.db`. Set `FAMILY_PIN` to your 4 to 12 digit PIN before starting the app.
 
 Run `go test ./...` or `make test`. Each Godog scenario uses a fresh in-memory SQLite database. See the [acceptance scenarios](features/). The PIN scenarios remain tagged `@wip` and are excluded; the PIN feature has separate Go tests.
 
@@ -35,3 +35,5 @@ To debug comparisons, run `RANKING_DEBUG=1 make start` and reload the app if it 
 Appen stöder PostgreSQL via `DATABASE_URL`. När variabeln saknas används SQLite som tidigare. Goose kör väntande migreringar vid start för både PostgreSQL och SQLite. Befintliga SQLite-data flyttas inte automatiskt.
 
 GitHub Actions testar och bygger vid pull requests. Efter godkända kontroller på `main` publiceras en version enligt Conventional Commits, med `0.0.1` som första version, samt `main` och en tagg för aktuell commit. Se [guiden för byggpipa och PostgreSQL](docs/deployment.md).
+
+Server configuration: [Compose, PIN and PostgreSQL setup](docs/server-setup.md).

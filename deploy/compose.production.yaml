@@ -1,0 +1,24 @@
+# Add this service to the Compose file that contains annovia-db.
+services:
+  wishlist:
+    image: ghcr.io/aekman/wishlist:0.0.1
+    container_name: wishlist
+    environment:
+      LISTEN_ADDR: ":8080"
+      BASE_URL: "https://wish.andreasekman.com"
+      FAMILY_PIN: "${WISHLIST_FAMILY_PIN:?Set WISHLIST_FAMILY_PIN to 4 to 12 digits}"
+      DATABASE_URL: "postgres://wishlist:${WISHLIST_DATABASE_PASSWORD:?Set Wishlist database password}@annovia-db:5432/wishlist?sslmode=disable"
+    ports:
+      - "127.0.0.1:8050:8080"
+    restart: unless-stopped
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
