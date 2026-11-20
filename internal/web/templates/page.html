@@ -1,10 +1,27 @@
 {{define "page"}}
 <!doctype html>
-<html lang="sv">
+<html lang="sv" prefix="og: https://ogp.me/ns#">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#fcf9f4">
+  <meta name="description" content="Samla önskningar, hitta favoriter och dela önskelistor med familjen.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Önskelistan">
+  <meta property="og:title" content="Önskelistan">
+  <meta property="og:description" content="Samla önskningar, hitta favoriter och dela önskelistor med familjen.">
+  <meta property="og:locale" content="sv_SE">
+  <meta property="og:url" content="{{.PreviewURL}}">
+  <meta property="og:image" content="{{.PreviewImageURL}}">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Tre pastellfärgade presenter med lila band bredvid texten Önskelistan.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Önskelistan">
+  <meta name="twitter:description" content="Samla önskningar, hitta favoriter och dela önskelistor med familjen.">
+  <meta name="twitter:image" content="{{.PreviewImageURL}}">
+  <meta name="twitter:image:alt" content="Tre pastellfärgade presenter med lila band bredvid texten Önskelistan.">
   <title>{{with .Title}}{{.}} · {{end}}Önskelistan</title>
   <meta name="htmx-config" content='{"includeIndicatorCSS":false,"noSwap":[204,304,"4xx","5xx"]}'>
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">

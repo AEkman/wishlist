@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"cmp"
 
 	"embed"
 	"errors"
@@ -26,6 +27,7 @@ type breadcrumb struct {
 }
 
 type page struct {
+	PreviewURL, PreviewImageURL        string
 	FamilyURL, SharedListURL, BrandURL string
 	SharedChildren                     []store.Child
 	SharedLists                        []store.Wishlist
@@ -120,6 +122,7 @@ func newApp(db *store.Store, baseURL string, draw func(int) int, rankingDebug bo
 }
 
 func (s server) show(c fiber.Ctx, data page) error {
+	baseURL := cmp.Or(s.baseURL, c.Scheme()+"://"+c.Host())
 	data.RankingDebug = s.rankingDebug
 	data.BrandURL = "/"
 	if data.FamilyURL != "" {
@@ -129,10 +132,6 @@ func (s server) show(c fiber.Ctx, data page) error {
 		token, err := s.db.FamilyShareID(c.Context())
 		if err != nil {
 			return err
-		}
-		baseURL := s.baseURL
-		if baseURL == "" {
-			baseURL = c.Scheme() + "://" + c.Host()
 		}
 		data.FamilyURL = baseURL + "/family/" + token
 	}
@@ -149,6 +148,15 @@ func (s server) show(c fiber.Ctx, data page) error {
 	if data.SharedListURL != "" && data.FamilyURL == "" && (data.View == "share" || data.View == "purchase" || data.View == "clear") {
 		data.BrandURL = data.SharedListURL
 	}
+	previewPath := "/"
+	switch data.View {
+	case "share", "purchase", "clear":
+		previewPath = data.SharedListURL
+	case "family", "family-lists":
+		previewPath = c.Path()
+	}
+	data.PreviewURL = baseURL + previewPath
+	data.PreviewImageURL = baseURL + "/static/share-card-v1.jpg"
 	children, err := s.db.Children(c.Context())
 	if err != nil {
 		return err
@@ -226,6 +234,8 @@ func (s server) asset(c fiber.Ctx) error {
 		contentType = "text/javascript; charset=utf-8"
 	case "htmx.LICENSE":
 		contentType = "text/plain; charset=utf-8"
+	case "share-card-v1.jpg":
+		contentType = "image/jpeg"
 	case "wishlist-hero.webp":
 		contentType = "image/webp"
 	case "favicon.svg":
