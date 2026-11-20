@@ -29,6 +29,7 @@
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/wish-camera.js" type="module"></script>
   <script src="/static/child-dialog.js" type="module"></script>
+  <script src="/static/share-links.js" type="module"></script>
   {{if .RankingDebug}}<script src="/static/ranking-debug.js" defer></script>{{end}}
 </head>
 <body hx-status:400:inherited="swap:outerHTML" hx-status:409:inherited="swap:outerHTML" hx-status:422:inherited="swap:outerHTML" hx-boost:inherited="true" hx-target:inherited="#screen" hx-select:inherited="#screen" hx-swap:inherited="outerHTML show:top">
@@ -260,6 +261,8 @@
       <div class="share-panel">
         <label for="share-url">Delningslänk</label>
         <input id="share-url" type="url" readonly value="{{.}}">
+        <button type="button" data-copy-share>Kopiera länk</button>
+        <p role="status" aria-live="polite" data-share-status></p>
       </div>
     </details>
     {{end}}
@@ -404,6 +407,8 @@
     <p>En gemensam länk till de listor du väljer att visa.</p>
     <label for="family-share-url">Familjelänk</label>
     <input id="family-share-url" type="url" readonly value="{{.}}">
+    <button type="button" data-copy-share>Kopiera länk</button>
+    <p role="status" aria-live="polite" data-share-status></p>
   </div>
 </details>
 {{end}}

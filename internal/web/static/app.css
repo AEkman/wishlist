@@ -1061,3 +1061,11 @@ input[type="file"]::file-selector-button {
     right: auto;
   }
 }
+
+.share-panel [data-copy-share] {
+  margin-top: .75rem;
+}
+
+.share-panel [data-share-status]:empty {
+  display: none;
+}
