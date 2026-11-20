@@ -1,15 +1,15 @@
 # Wishlist server setup
 
-Use the PostgreSQL server in the existing `annovia-db` container. Create a separate `wishlist` database and login for this app.
+Use the PostgreSQL 19 server in the `postgres` container. Create a separate `wishlist` database and login for this app.
 
-PR #1 must be merged and its release workflow must finish before image `0.0.1` is available.
+Use an image version that has completed publication in GHCR.
 
 ## Create the database
 
 On the server, open PostgreSQL as its administrator:
 
 ```sh
-docker exec -it annovia-db psql -U postgres -d postgres
+docker exec -it postgres psql -U postgres -d postgres
 ```
 
 Run these commands in `psql` once:
@@ -52,7 +52,7 @@ The example is also in `deploy/production.env.example`. It contains no credentia
 
 ## Add the Compose service
 
-Copy the `wishlist` service from `deploy/compose.production.yaml` into the existing Compose file under `services:`. The service must share a Docker network with `annovia-db`. With no custom networks, services in the same Compose project use its default network.
+Copy the `wishlist` service from `deploy/compose.production.yaml` into the existing Compose file under `services:`. The service must share a Docker network with `postgres`. With no custom networks, services in the same Compose project use its default network.
 
 The service uses port `8050` on the host's loopback interface and port `8080` in the container. Nginx on the host can proxy to `http://127.0.0.1:8050`.
 
@@ -67,12 +67,12 @@ docker compose config --quiet
 docker compose pull wishlist
 docker compose up -d wishlist
 docker compose logs --tail=100 wishlist
-curl -I http://127.0.0.1:8050/
+curl -sS -D - -o /dev/null http://127.0.0.1:8050/
 ```
 
 A redirect to `/unlock` is expected before PIN authentication.
 
-Set the A record for `wish.andreasekman.com` to the server address. Configure Nginx and HTTPS for that hostname, with the proxy target above. Allow request bodies of at least `10m` for image uploads.
+Set the A record for `wishlist.andreasekman.com` to the server address. Configure Nginx and HTTPS for that hostname, with the proxy target above. Allow request bodies of at least `10m` for image uploads.
 
 ## Later releases
 

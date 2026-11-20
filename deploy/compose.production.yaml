@@ -1,13 +1,13 @@
-# Add this service to the Compose file that contains annovia-db.
+# Add this service to the Compose file that contains the PostgreSQL 19 service named postgres.
 services:
   wishlist:
     image: ghcr.io/aekman/wishlist:0.0.1
     container_name: wishlist
     environment:
       LISTEN_ADDR: ":8080"
-      BASE_URL: "https://wish.andreasekman.com"
+      BASE_URL: "https://wishlist.andreasekman.com"
       FAMILY_PIN: "${WISHLIST_FAMILY_PIN:?Set WISHLIST_FAMILY_PIN to 4 to 12 digits}"
-      DATABASE_URL: "postgres://wishlist:${WISHLIST_DATABASE_PASSWORD:?Set Wishlist database password}@annovia-db:5432/wishlist?sslmode=disable"
+      DATABASE_URL: "postgres://wishlist:${WISHLIST_DATABASE_PASSWORD:?Set Wishlist database password}@postgres:5432/wishlist?sslmode=disable"
     ports:
       - "127.0.0.1:8050:8080"
     restart: unless-stopped
