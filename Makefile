@@ -15,4 +15,4 @@ stop:
 
 test:
 	go test ./...
-	node --test internal/web/share-links.test.mjs
+	node --test internal/web/*.test.mjs
