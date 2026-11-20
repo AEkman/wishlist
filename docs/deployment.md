@@ -33,7 +33,7 @@ Första versionen är alltid `0.0.1`. Därefter bestämmer Conventional Commits 
 
 Den största ändringen styr om flera commits ingår. Godkända typer är `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore` och `revert`. Efter första releasen avbryts publiceringen om ett nytt commit-meddelande inte följer formatet.
 
-Använd Conventional Commits i direkta commits till `main`. Använd **Squash and merge** för pull requests och behåll den kontrollerade PR-titeln som commit-titel. Workflowet **Conventional PR title** kontrollerar titeln. Vanliga merge-commits följer inte detta format.
+Use Conventional Commits for changes. With **Squash and merge**, keep the validated PR title as the commit title. With a regular merge, each source commit must use Conventional Commits. Version planning excludes merge commits and uses the largest increment from the source commits. The **Conventional PR title** workflow checks the PR title.
 
 Efter publiceringen skapas en Git-tagg, till exempel `v0.0.1`, och en GitHub Release med referens till imagen. En omkörning återanvänder redan publicerade bytes och slutför en avbruten release. En versionstagg flyttas inte till annan källkod.
 
