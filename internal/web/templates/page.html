@@ -30,6 +30,7 @@
   <script src="/static/wish-camera.js" type="module"></script>
   <script src="/static/child-dialog.js" type="module"></script>
   <script src="/static/share-links.js" type="module"></script>
+  <script src="/static/image-preview.js" type="module"></script>
   {{if .RankingDebug}}<script src="/static/ranking-debug.js" defer></script>{{end}}
 </head>
 <body hx-status:400:inherited="swap:outerHTML" hx-status:409:inherited="swap:outerHTML" hx-status:422:inherited="swap:outerHTML" hx-boost:inherited="true" hx-target:inherited="#screen" hx-select:inherited="#screen" hx-swap:inherited="outerHTML show:top">
@@ -55,6 +56,13 @@
       {{end}}
     </main>
   </div>
+  <dialog class="image-preview" id="wish-image-dialog" aria-labelledby="wish-image-title">
+    <div class="image-preview-heading">
+      <h2 id="wish-image-title"></h2>
+      <form method="dialog" hx-boost="false"><button type="submit" data-image-close>Stäng</button></form>
+    </div>
+    <img id="wish-image-large" alt="">
+  </dialog>
 </body>
 </html>
 {{end}}
@@ -213,7 +221,7 @@
   </div>
 {{else if .Wish.ID}}
   <article class="single-wish">
-    <div class="wish-image"><img src="/images/{{.Wish.ID}}?v={{.Wish.ImageRevision}}" alt=""></div>
+    <a class="wish-image" href="/images/{{.Wish.ID}}?v={{.Wish.ImageRevision}}" data-image-preview data-image-title="{{.Wish.Title}}" aria-label="Visa större bild av {{.Wish.Title}}" aria-haspopup="dialog" aria-controls="wish-image-dialog" hx-boost="false"><img src="/images/{{.Wish.ID}}?v={{.Wish.ImageRevision}}" alt=""></a>
     <div class="wish-copy">
       <h2>{{.Wish.Title}}</h2>
       {{with .Wish.Description}}<p class="wish-description">{{.}}</p>{{end}}
@@ -275,9 +283,9 @@
 <ol class="ranked-list">
   {{range .Wishes}}
   <li class="ranked-card" data-rank="{{.Rank}}">
-    <div class="wish-image">
+    <a class="wish-image" href="/images/{{.ID}}?v={{.ImageRevision}}" data-image-preview data-image-title="{{.Title}}" aria-label="Visa större bild av {{.Title}}" aria-haspopup="dialog" aria-controls="wish-image-dialog" hx-boost="false">
       <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
-    </div>
+    </a>
     <div class="wish-copy">
       <div class="ranked-title"><span class="rank-number" aria-hidden="true">{{.Rank}}</span><h2>{{.Title}}</h2></div>
       {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}
@@ -302,12 +310,12 @@
 <ol class="ranked-list">
   {{range .Wishes}}
   <li class="ranked-card" data-rank="{{.Rank}}">
-    <div class="wish-image">
+    <a class="wish-image" href="{{$.SharedListURL}}/images/{{.ID}}?v={{.ImageRevision}}" data-image-preview data-image-title="{{.Title}}" aria-label="Visa större bild av {{.Title}}" aria-haspopup="dialog" aria-controls="wish-image-dialog" hx-boost="false">
       <img src="{{$.SharedListURL}}/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
       {{with .Buyer}}
       <div class="purchase-overlay"><strong>Köpt</strong><span>av {{.}}</span></div>
       {{end}}
-    </div>
+    </a>
     <div class="wish-copy">
       <div class="ranked-title"><span class="rank-number" aria-hidden="true">{{.Rank}}</span><h2>{{.Title}}</h2></div>
       {{with .Description}}<p class="wish-description">{{.}}</p>{{end}}

@@ -1069,3 +1069,50 @@ input[type="file"]::file-selector-button {
 .share-panel [data-share-status]:empty {
   display: none;
 }
+
+.image-preview-open {
+  overflow: hidden;
+}
+
+a.wish-image {
+  cursor: zoom-in;
+}
+
+a.wish-image:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.image-preview {
+  width: min(80rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.image-preview::backdrop {
+  background: rgb(30 20 40 / .78);
+}
+
+.image-preview-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .75rem;
+}
+
+.image-preview-heading h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.image-preview > img {
+  display: block;
+  width: 100%;
+  max-height: calc(100dvh - 8rem);
+  object-fit: contain;
+}

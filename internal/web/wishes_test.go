@@ -119,7 +119,11 @@ func TestEditImageChangesItsURL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		images := htmlNodes(doc, isElement("img"))
+		content := htmlNodes(doc, func(n *html.Node) bool { return htmlAttr(n, "id") == "content" })
+		if len(content) != 1 {
+			t.Fatal("page must contain one main content region")
+		}
+		images := htmlNodes(content[0], isElement("img"))
 		if len(images) != 1 {
 			t.Fatalf("ranked page has %d images, want one", len(images))
 		}

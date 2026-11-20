@@ -244,7 +244,7 @@ func (s server) asset(c fiber.Ctx) error {
 	switch file {
 	case "app.css":
 		contentType = "text/css; charset=utf-8"
-	case "htmx.min.js", "ranking-debug.js", "wish-camera.js", "child-dialog.js", "share-links.js":
+	case "htmx.min.js", "ranking-debug.js", "wish-camera.js", "child-dialog.js", "share-links.js", "image-preview.js":
 		contentType = "text/javascript; charset=utf-8"
 	case "htmx.LICENSE":
 		contentType = "text/plain; charset=utf-8"
