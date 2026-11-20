@@ -2,3 +2,9 @@
 /wishlists.db
 /wishlists.db-*
 /wishlist
+
+# Local runtime secrets
+.env
+.env.*
+
+__pycache__/
