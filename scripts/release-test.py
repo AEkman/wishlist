@@ -91,6 +91,17 @@ class HistoryTests(unittest.TestCase):
         self.commit('fix: alignment')
         self.assertEqual(release.plan('HEAD')['version'], 'v0.1.0')
 
+    def test_github_merge_commits_preserve_feature_bumps(self):
+        self.git('tag', 'v0.0.1')
+        base = self.git('branch', '--show-current')
+        self.git('checkout', '-qb', 'feature')
+        self.commit('feat: add sharing')
+        self.git('checkout', base)
+        self.commit('ci: cache image builds')
+        self.git('merge', '--no-ff', 'feature', '-m',
+                 'Merge pull request #3 from fixture/feature\n\nfeat: add sharing')
+        self.assertEqual(release.plan('HEAD')['version'], 'v0.1.0')
+
     def test_stale_revision_cannot_release(self):
         old = self.git('rev-parse', 'HEAD')
         self.commit('fix: newer')

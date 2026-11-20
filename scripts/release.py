@@ -54,7 +54,8 @@ def plan(target):
             return {'version': previous, 'revision': target, 'existing': 'true'}
         # An older job must never republish main or release an older ancestor.
         subprocess.run(['git', 'merge-base', '--is-ancestor', revision, target], check=True)
-    history = git('log', '--format=%B%x00', f'{previous}..{target}' if previous else target)
+    # Validate the actual changes; GitHub merge wrappers are not change titles.
+    history = git('log', '--no-merges', '--format=%B%x00', f'{previous}..{target}' if previous else target)
     messages = [message.strip() for message in history.split('\0') if message.strip()]
     return {'version': next_version(previous, messages), 'revision': target, 'existing': 'false'}
 
