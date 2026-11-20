@@ -10,11 +10,13 @@ Workflowet finns i `.github/workflows/build.yaml`.
 
 Vid en pull request mot `main` körs:
 
-- Go-tester med både SQLite och en tillfällig PostgreSQL 18.7- och 19.0-databas.
+- Go-tester med både SQLite och en tillfällig PostgreSQL 19.0-databas.
 - `go vet`, formatkontroll och kontroll av `go.mod` och `go.sum`.
 - Containerbygge för `linux/amd64` och `linux/arm64`.
 
 En pull request publicerar ingen image och behöver inga serverhemligheter.
+
+Containerbygget använder samma cacheupplägg som Annovia: Docker-lager i GitHub Actions cache och en separat Go-kompilatorcache. Validering och publicering använder samma byggåtgärd. Publicering återanvänder valideringens lager. PR-cache hålls separat från `main`. Nedladdning av Go-moduler försöks upp till tre gånger vid tillfälliga nätfel.
 
 Vid en push till `main` körs samma kontroller. När de går igenom publiceras:
 
@@ -110,7 +112,7 @@ När imagen finns i GHCR kan du lägga till tjänsten i din befintliga Compose-f
 
 - `DATABASE_URL` till Wishlist-databasen.
 - `FAMILY_PIN` med familjens PIN-kod.
-- `BASE_URL=https://wish.andreasekman.com`.
+- `BASE_URL=https://wishlist.andreasekman.com`.
 - `LISTEN_ADDR=:8080`.
 
 Anslut containern till databasens nätverk. Om Nginx kör direkt på servern, publicera appens port på serverns loopback-adress.
