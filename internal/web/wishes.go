@@ -40,8 +40,11 @@ func (s server) compare(c fiber.Ctx) error {
 		data.Wish, data.Completed = wish, true
 		return s.show(c, data)
 	}
+	if id := c.Query("focus"); id != "" {
+		return s.insertionComparison(c, data, wishes, id, "focus")
+	}
 	if id := c.Query("upload"); id != "" && len(wishes) > 1 {
-		return s.uploadComparison(c, data, wishes, id)
+		return s.insertionComparison(c, data, wishes, id, "upload")
 	}
 	switch len(wishes) {
 	case 0:
@@ -129,11 +132,19 @@ func (s server) ranked(c fiber.Ctx) error {
 	if baseURL == "" {
 		baseURL = c.Scheme() + "://" + c.Host()
 	}
-	return s.show(c, page{
+	data := page{
 		View: "ranked", Title: list.Title, Wishlist: list,
-		ShareURL: baseURL + "/" + list.ShareID,
-		Wishes:   inRankOrder(wishes),
-	})
+		ShareURL: baseURL + "/" + list.ShareID, Wishes: inRankOrder(wishes),
+	}
+	if id := c.Query("ranked"); id != "" {
+		index := findWishIndex(wishes, id)
+		if index < 0 {
+			return store.ErrNotFound
+		}
+		data.RankingResult = data.Wishes[index]
+		data.NewFavorite = index == 0 && c.Query("newfavorite") == "1"
+	}
+	return s.show(c, data)
 }
 
 func inRankOrder(wishes []store.Wish) []rankedWish {

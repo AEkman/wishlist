@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/AEkman/wishlist/internal/store"
 	"github.com/cucumber/godog"
 	"golang.org/x/net/html"
 )
@@ -55,8 +54,8 @@ func (a *acceptance) registerUploadSteps(sc *godog.ScenarioContext) {
 		return nil
 	})
 	sc.Then(`^each opponent appears at most once in the upload comparisons$`, u.opponentsAreUnique)
-	sc.Given(`^the first upload comparison randomly selects "([^"]+)" as the opponent$`, u.drawUploadOpponent)
-	sc.Then(`^the next opponent is one of "([^"]+)"$`, u.nextOpponentIsOneOf)
+	sc.Given(`^the first upload comparison selects "([^"]+)" as the opponent$`, u.openUploadComparison)
+	sc.Then(`^the next opponent is "([^"]+)"$`, u.nextOpponentIsOneOf)
 	sc.Given(`^"([^"]+)" is ranked third and marked as bought by "([^"]+)" on the shared list$`, u.seedBoughtThirdWish)
 	sc.When(`^I change the wish's picture, title, and description$`, u.editBoughtWish)
 	sc.Then(`^the updated wish is still ranked third$`, u.editedWishStillRanksThird)
@@ -239,21 +238,11 @@ func (u *uploadAcceptance) opponentsAreUnique() error {
 	return nil
 }
 
-func (u *uploadAcceptance) drawUploadOpponent(title string) error {
+func (u *uploadAcceptance) openUploadComparison(title string) error {
 	newWish, err := u.findWish(newWishTitle)
 	if err != nil {
 		return err
 	}
-	wishes, err := u.db.Wishes(u.ctx, u.wishlist.ID)
-	if err != nil {
-		return err
-	}
-	wishes = slices.DeleteFunc(wishes, func(wish store.Wish) bool { return wish.ID == newWish.ID })
-	draw := slices.IndexFunc(wishes, func(wish store.Wish) bool { return wish.Title == title })
-	if draw < 0 {
-		return fmt.Errorf("no opponent named %q", title)
-	}
-	u.draws = []int{draw}
 	query := url.Values{"upload": {newWish.ID}}
 	if err := u.get(u.listPath() + "?" + query.Encode()); err != nil {
 		return err

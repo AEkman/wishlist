@@ -18,7 +18,7 @@ Feature: Add and edit wishes
     When I submit a camera picture with the title "LEGO"
     Then Alex's wish includes the picture, title, and description
 
-  Scenario Outline: Compare a new wish with a limited number of different opponents
+  Scenario Outline: Place a new wish by binary insertion
     Given Alex's wishlist has <Existing wishes> wishes
     When I add a wish with a picture and title
     Then the upload requires <Picks> picks
@@ -32,34 +32,28 @@ Feature: Add and edit wishes
       | 2               | 2     |
       | 3               | 2     |
       | 4               | 3     |
-      | 9               | 3     |
+      | 9               | 4     |
 
-  Scenario: Try a higher-ranked opponent after a win
+  Scenario: Place a new favorite with midpoint comparisons
     Given the wishlist order is "Bike, LEGO, Skates, Ball, New wish"
-    And the first upload comparison randomly selects "Ball" as the opponent
+    And the first upload comparison selects "Skates" as the opponent
     When I pick "New wish"
-    Then the wishlist order is "Bike, LEGO, Skates, New wish, Ball"
-    And the next opponent is one of "Bike, LEGO, Skates"
-
-  Scenario: Try a lower-ranked opponent after a loss
-    Given the wishlist order is "Bike, LEGO, Skates, Ball, New wish"
-    And the first upload comparison randomly selects "LEGO" as the opponent
-    When I pick "LEGO"
     Then the wishlist order is "Bike, LEGO, Skates, Ball, New wish"
-    And the next opponent is one of "Skates, Ball"
-
-  Scenario: Use an untried opponent when no higher-ranked opponent remains
-    Given the wishlist order is "Bike, LEGO, Skates, Ball, New wish"
-    And the first upload comparison randomly selects "Bike" as the opponent
+    And the next opponent is "LEGO"
+    When I pick "New wish"
+    Then the next opponent is "Bike"
     When I pick "New wish"
     Then "New wish" is first
-    And the next opponent is one of "LEGO, Skates, Ball"
+    And no comparison is shown
 
-  Scenario: Use an untried opponent when no lower-ranked opponent remains
+  Scenario: Place a new wish between two existing wishes
     Given the wishlist order is "Bike, LEGO, Skates, Ball, New wish"
-    And the first upload comparison randomly selects "Ball" as the opponent
-    When I pick "Ball"
-    Then the next opponent is one of "Bike, LEGO, Skates"
+    And the first upload comparison selects "Skates" as the opponent
+    When I pick "Skates"
+    Then the next opponent is "Ball"
+    When I pick "New wish"
+    Then the wishlist order is "Bike, LEGO, Skates, New wish, Ball"
+    And no comparison is shown
 
   Scenario: Edit a wish and keep its rank and purchase mark
     Given "LEGO" is ranked third and marked as bought by "Anna" on the shared list

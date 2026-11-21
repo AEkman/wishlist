@@ -9,14 +9,15 @@ function fixture() {
   const classes = new Set();
   const image = { src: '', alt: '', removeAttribute(name) { this[name] = ''; } };
   const title = { textContent: '' };
+  const rankAction = { hidden: true, href: '', removeAttribute(name) { this[name] = ''; } };
   const closeButton = { focused: false, focus() { this.focused = true; } };
   const dialog = { open: false, showModal() { this.open = true; }, close() { this.open = false; dialogListeners.get('close')?.(); }, addEventListener(type, fn) { dialogListeners.set(type, fn); }, querySelector() { return closeButton; }, getBoundingClientRect() { return { left: 100, right: 700, top: 100, bottom: 600 }; } };
-  const elements = { 'wish-image-dialog': dialog, 'wish-image-large': image, 'wish-image-title': title };
+  const elements = { 'wish-image-dialog': dialog, 'wish-image-large': image, 'wish-image-title': title, 'wish-image-rank': rankAction };
   const doc = { getElementById(id) { return elements[id]; }, addEventListener(type, fn) { listeners.set(type, fn); }, documentElement: { classList: { add(name) { classes.add(name); }, remove(name) { classes.delete(name); } } } };
   installImagePreview(doc);
   const trigger = { href: 'https://wishlist.example/images/wish?v=2', dataset: { imageTitle: 'Cykel' }, isConnected: true, focused: false, focus() { this.focused = true; } };
   const event = { defaultPrevented: false, button: 0, preventDefault() { this.defaultPrevented = true; }, target: { closest(selector) { return selector === '[data-image-preview]' ? trigger : null; } } };
-  return { doc, dialog, image, title, closeButton, trigger, event, classes, listeners, dialogListeners, click() { return listeners.get('click')(event); } };
+  return { doc, dialog, image, title, rankAction, closeButton, trigger, event, classes, listeners, dialogListeners, click() { return listeners.get('click')(event); } };
 }
 test('opens the selected image at full size with its title', () => {
   const view = fixture(); view.click();
@@ -66,4 +67,18 @@ test('new images after navigation use their own title and URL', () => {
  view.trigger.isConnected = false;
  view.dialog.close();
  assert.equal(view.trigger.focused, false);
+});
+
+test('private ranked images offer ranking and other previews hide the action', () => {
+ const view = fixture();
+ view.trigger.dataset.rankUrl = '/lists/list?focus=wish';
+ view.click();
+ assert.equal(view.rankAction.hidden, false);
+ assert.equal(view.rankAction.href, '/lists/list?focus=wish');
+ view.dialog.close();
+ delete view.trigger.dataset.rankUrl;
+ view.event.defaultPrevented = false;
+ view.click();
+ assert.equal(view.rankAction.hidden, true);
+ assert.equal(view.rankAction.href, '');
 });
