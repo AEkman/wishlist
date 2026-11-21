@@ -50,6 +50,9 @@ type page struct {
 	Insertion                          insertionState
 	Remaining                          int
 	RankingDebug                       bool
+	Guided                             *store.GuidedProgress
+	GuidedWish                         store.Wish
+	GuidedLink                         *store.GuidedProgress
 }
 
 type rankedWish struct {
@@ -113,6 +116,8 @@ func newApp(db *store.Store, baseURL string, draw func(int) int, rankingDebug bo
 	app.Post("/children/:child/wishlists", s.createWishlist)
 	app.Get("/lists/:list", s.compare)
 	app.Post("/lists/:list/pick", s.pick)
+	app.Post("/lists/:list/ranking/undo", s.guidedUndo)
+	app.Post("/lists/:list/ranking/restart", s.guidedRestart)
 	app.Get("/lists/:list/ranked", s.ranked)
 	app.Post("/lists/:list/ranked/move", s.moveWish)
 	app.Get("/lists/:list/wishes/new", s.addForm)

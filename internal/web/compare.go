@@ -12,6 +12,12 @@ func (s server) pick(c fiber.Ctx) error {
 	listID := c.Params("list")
 	winner, loser := c.FormValue("winner"), c.FormValue("loser")
 	focus, upload := c.FormValue("focus"), c.FormValue("upload")
+	if c.FormValue("guided_revision") != "" {
+		if focus != "" || upload != "" {
+			return store.ErrInvalid
+		}
+		return s.guidedPick(c)
+	}
 	if focus != "" && upload != "" {
 		return store.ErrInvalid
 	}
@@ -25,7 +31,10 @@ func (s server) pick(c fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	path := "/lists/" + listID
+	return s.rankingRedirect(c, "/lists/"+listID, result)
+}
+
+func (s server) rankingRedirect(c fiber.Ctx, path string, result store.PickResult) error {
 	if s.rankingDebug && c.Get("HX-Request") == "true" {
 		// HTMX handles these headers before requesting the next comparison.
 		event, err := json.Marshal(map[string]store.PickResult{"wishlist:ranking-pick": result})
