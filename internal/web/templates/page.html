@@ -63,7 +63,7 @@
       <form method="dialog" hx-boost="false"><button type="submit" data-image-close>Stäng</button></form>
     </div>
     <img id="wish-image-large" alt="">
-    <a class="button" id="wish-image-rank" hx-boost="false" hidden>Rangordna denna önskan · 5 jämförelser</a>
+    <a class="button" id="wish-image-rank" hx-boost="false" hidden>Rangordna denna önskan</a>
   </dialog>
 </body>
 </html>
@@ -206,8 +206,8 @@
   </div>
 </div>
 {{if .HasPair}}
-  {{if .Focus}}<p class="upload-progress">Rangordna {{.Left.Title}} · {{.Remaining}} jämförelser kvar</p>{{end}}
-  {{if .Upload}}<p class="upload-progress">Jämför din nya önskan · {{.Remaining}} kvar</p>{{end}}
+  {{if .Focus}}<p class="upload-progress">Rangordna {{.Left.Title}} · högst {{.Remaining}} {{if eq .Remaining 1}}jämförelse{{else}}jämförelser{{end}} kvar</p>{{end}}
+  {{if .Upload}}<p class="upload-progress">Placera din nya önskan · högst {{.Remaining}} {{if eq .Remaining 1}}jämförelse{{else}}jämförelser{{end}} kvar</p>{{end}}
   <div class="pair">
     <form class="pair-option" hx-swap="outerHTML swap:150ms show:top" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
       {{template "upload-fields" .}}
@@ -244,13 +244,15 @@
 {{define "upload-fields"}}
 {{if .Focus}}
 <input type="hidden" name="focus" value="{{.Left.ID}}">
-<input type="hidden" name="remaining" value="{{.Remaining}}">
-{{range .Tried}}<input type="hidden" name="tried" value="{{.}}">{{end}}
+<input type="hidden" name="low" value="{{.Insertion.Low}}">
+<input type="hidden" name="high" value="{{.Insertion.High}}">
+<input type="hidden" name="order" value="{{.Insertion.Order}}">
 {{end}}
 {{if .Upload}}
 <input type="hidden" name="upload" value="{{.Left.ID}}">
-<input type="hidden" name="remaining" value="{{.Remaining}}">
-{{range .Tried}}<input type="hidden" name="tried" value="{{.}}">{{end}}
+<input type="hidden" name="low" value="{{.Insertion.Low}}">
+<input type="hidden" name="high" value="{{.Insertion.High}}">
+<input type="hidden" name="order" value="{{.Insertion.Order}}">
 {{end}}
 {{end}}
 
@@ -264,6 +266,17 @@
 {{end}}
 
 {{define "ranked"}}
+{{if .RankingResult.ID}}
+<section class="ranking-complete{{if .NewFavorite}} ranking-complete--favorite{{end}}" role="status" aria-live="polite">
+  {{if .NewFavorite}}
+  <div class="ranking-confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <img class="ranking-favorite-image" src="/images/{{.RankingResult.ID}}?v={{.RankingResult.ImageRevision}}" alt="{{.RankingResult.Title}}">
+  {{end}}
+  <div>{{if .NewFavorite}}<h2>Ny favorit!</h2>{{end}}
+    <p>Klart! {{.RankingResult.Title}} fick plats {{.RankingResult.Rank}} av {{len .Wishes}}.</p>
+  </div>
+</section>
+{{end}}
 <div class="page-heading page-heading--with-actions">
   <div>
     <p class="context">Önskelista</p>

@@ -44,8 +44,10 @@ type page struct {
 	Children                           []store.Child
 	Wishlists                          []store.Wishlist
 	Wishes                             []rankedWish
+	RankingResult                      rankedWish
+	NewFavorite                        bool
 	HasPair, Upload, Completed, Focus  bool
-	Tried                              []string
+	Insertion                          insertionState
 	Remaining                          int
 	RankingDebug                       bool
 }

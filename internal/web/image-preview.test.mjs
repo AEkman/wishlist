@@ -69,7 +69,7 @@ test('new images after navigation use their own title and URL', () => {
  assert.equal(view.trigger.focused, false);
 });
 
-test('private ranked images offer five comparisons and other previews hide the action', () => {
+test('private ranked images offer ranking and other previews hide the action', () => {
  const view = fixture();
  view.trigger.dataset.rankUrl = '/lists/list?focus=wish';
  view.click();

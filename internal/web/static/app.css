@@ -1155,3 +1155,49 @@ a.wish-image:focus-visible {
 #wish-image-rank[hidden] {
   display: none;
 }
+
+.ranking-complete {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  overflow: hidden;
+  border: 1px solid #b5d8c9;
+  border-radius: var(--radius);
+  background: #e4f4ec;
+}
+
+.ranking-complete h2, .ranking-complete p { margin: 0; }
+.ranking-complete h2 { margin-bottom: .4rem; }
+.ranking-favorite-image { width: 6rem; height: 6rem; object-fit: contain; border-radius: .75rem; }
+.ranking-complete--favorite { background: #fff3cf; border-color: #e5cb78; }
+.ranking-confetti { position: absolute; inset: 0; pointer-events: none; }
+.ranking-confetti span {
+  position: absolute;
+  top: -.5rem;
+  left: 10%;
+  width: .5rem;
+  height: .8rem;
+  background: #8f62bc;
+  animation: ranking-confetti-fall 1.4s ease-out both;
+}
+.ranking-confetti span:nth-child(2n) { background: #cf8b29; animation-delay: .12s; }
+.ranking-confetti span:nth-child(3n) { background: #448e75; animation-delay: .25s; }
+.ranking-confetti span:nth-child(2) { left: 20%; }
+.ranking-confetti span:nth-child(3) { left: 30%; }
+.ranking-confetti span:nth-child(4) { left: 40%; }
+.ranking-confetti span:nth-child(5) { left: 50%; }
+.ranking-confetti span:nth-child(6) { left: 60%; }
+.ranking-confetti span:nth-child(7) { left: 70%; }
+.ranking-confetti span:nth-child(8) { left: 80%; }
+.ranking-confetti span:nth-child(9) { left: 90%; }
+.ranking-confetti span:nth-child(10) { left: 95%; }
+@keyframes ranking-confetti-fall {
+  from { transform: translateY(0) rotate(0); opacity: 1; }
+  to { transform: translateY(12rem) rotate(240deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranking-confetti { display: none; }
+}

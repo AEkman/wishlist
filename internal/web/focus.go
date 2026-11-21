@@ -1,90 +1,120 @@
 package web
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"math/bits"
 	"net/url"
-	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/AEkman/wishlist/internal/store"
 	"github.com/gofiber/fiber/v3"
 )
 
-const focusedComparisons = 5
+type insertionState struct {
+	Low, High int
+	Order     string
+}
 
-func (s server) focusComparison(c fiber.Ctx, data page, wishes []store.Wish, id string) error {
+func insertionRange(low, high string, size int) (insertionState, error) {
+	lower, err := strconv.Atoi(low)
+	if err != nil {
+		return insertionState{}, store.ErrInvalid
+	}
+	upper, err := strconv.Atoi(high)
+	if err != nil || lower < 0 || lower >= upper || upper > size {
+		return insertionState{}, store.ErrInvalid
+	}
+	return insertionState{Low: lower, High: upper}, nil
+}
+
+func insertionWishes(wishes []store.Wish, id string) (store.Wish, []store.Wish, error) {
 	index := findWishIndex(wishes, id)
 	if index < 0 {
-		return store.ErrNotFound
+		return store.Wish{}, nil, store.ErrNotFound
 	}
-	if len(wishes) < 2 {
-		data.Wish = wishes[index]
+	others := make([]store.Wish, 0, len(wishes)-1)
+	others = append(others, wishes[:index]...)
+	others = append(others, wishes[index+1:]...)
+	return wishes[index], others, nil
+}
+
+func insertionOrder(wishes []store.Wish) string {
+	ids := make([]string, len(wishes))
+	for i, wish := range wishes {
+		ids[i] = wish.ID
+	}
+	sum := sha256.Sum256([]byte(strings.Join(ids, ",")))
+	return hex.EncodeToString(sum[:])
+}
+
+func (s server) insertionComparison(c fiber.Ctx, data page, wishes []store.Wish, id, mode string) error {
+	wish, others, err := insertionWishes(wishes, id)
+	if err != nil {
+		return err
+	}
+	if len(others) == 0 {
+		data.Wish = wish
 		return s.show(c, data)
 	}
-	remaining, err := strconv.Atoi(c.Query("remaining", strconv.Itoa(focusedComparisons)))
-	tried := triedIDs(c.Request().URI().QueryArgs().PeekMulti("tried"))
-	if err != nil || remaining < 1 || remaining > focusedComparisons || len(tried) != focusedComparisons-remaining {
+	order := insertionOrder(others)
+	if (c.Query("low") != "" || c.Query("high") != "" || c.Query("order") != "") && c.Query("order") != order {
 		return store.ErrInvalid
 	}
-	order := make([]string, len(wishes))
-	for i, wish := range wishes {
-		order[i] = wish.ID
+	state, err := insertionRange(c.Query("low", "0"), c.Query("high", strconv.Itoa(len(others))), len(others))
+	if err != nil {
+		return err
 	}
-	opponent := uploadOpponent(order, id, c.Query("pivot"), c.Query("higher") == "1", tried, s.draw)
-	if opponent == "" {
-		// Start another cycle when fewer than five other wishes are available.
-		// Keep the last opponent excluded so consecutive pairs differ when possible.
-		var last []string
-		if len(tried) > 0 && len(wishes) > 2 {
-			last = tried[len(tried)-1:]
-		}
-		opponent = uploadOpponent(order, id, c.Query("pivot"), c.Query("higher") == "1", last, s.draw)
-	}
-	data.HasPair, data.Focus = true, true
-	data.Left, data.Right = wishes[index], wishes[findWishIndex(wishes, opponent)]
-	data.Remaining, data.Tried = remaining, tried
+	data.HasPair, data.Focus, data.Upload = true, mode == "focus", mode == "upload"
+	data.Left, data.Right = wish, others[(state.Low+state.High)/2]
+	state.Order = order
+	data.Insertion = state
+	data.Remaining = bits.Len(uint(state.High - state.Low))
 	return s.show(c, data)
 }
 
-func (s server) focusPick(c fiber.Ctx, listID, id, winner, loser string) (url.Values, error) {
-	remaining, err := strconv.Atoi(c.FormValue("remaining"))
-	tried := triedIDs(c.Request().PostArgs().PeekMulti("tried"))
-	if err != nil || remaining < 1 || remaining > focusedComparisons || len(tried) != focusedComparisons-remaining || (id != winner && id != loser) {
-		return nil, store.ErrInvalid
-	}
+func (s server) insertionPick(c fiber.Ctx, listID, id, winner, loser, mode string) error {
 	wishes, err := s.db.Wishes(c.Context(), listID)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	for _, previous := range tried {
-		if previous == id || findWishIndex(wishes, previous) < 0 {
-			return nil, store.ErrInvalid
+	_, others, err := insertionWishes(wishes, id)
+	if err != nil {
+		return err
+	}
+	order := insertionOrder(others)
+	if c.FormValue("order") != order {
+		return store.ErrInvalid
+	}
+	state, err := insertionRange(c.FormValue("low"), c.FormValue("high"), len(others))
+	if err != nil {
+		return err
+	}
+	middle := (state.Low + state.High) / 2
+	opponent := others[middle].ID
+	if winner == id && loser == opponent {
+		state.High = middle
+	} else if loser == id && winner == opponent {
+		state.Low = middle + 1
+	} else {
+		return store.ErrInvalid
+	}
+	path := "/lists/" + listID
+	if state.Low == state.High {
+		expected := make([]string, len(wishes))
+		for i, wish := range wishes {
+			expected[i] = wish.ID
 		}
-	}
-	opponent := winner
-	if id == winner {
-		opponent = loser
-	}
-	eligible := make([]string, 0, len(wishes))
-	for _, wish := range wishes {
-		if wish.ID != id && !slices.Contains(tried, wish.ID) {
-			eligible = append(eligible, wish.ID)
+		if err := s.db.PlaceWish(c.Context(), listID, id, state.Low+1, expected); err != nil {
+			return err
 		}
-	}
-	if len(eligible) > 0 && !slices.Contains(eligible, opponent) {
-		return nil, store.ErrInvalid
-	}
-	if len(eligible) == 0 && len(wishes) > 2 && len(tried) > 0 && opponent == tried[len(tried)-1] {
-		return nil, store.ErrInvalid
-	}
-	next := url.Values{}
-	if remaining > 1 {
-		next.Set("focus", id)
-		next.Set("pivot", winner)
-		if id == winner {
-			next.Set("higher", "1")
+		completed := url.Values{"ranked": {id}}
+		if state.Low == 0 && wishes[0].ID != id {
+			completed.Set("newfavorite", "1")
 		}
-		next.Set("remaining", strconv.Itoa(remaining-1))
-		next["tried"] = append(tried, opponent)
+		return redirect(c, path+"/ranked?"+completed.Encode())
 	}
-	return next, nil
+	next := url.Values{mode: {id}, "low": {strconv.Itoa(state.Low)}, "high": {strconv.Itoa(state.High)}, "order": {order}}
+	return redirect(c, path+"?"+next.Encode())
 }

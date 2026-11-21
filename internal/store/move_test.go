@@ -76,3 +76,36 @@ func TestPostgresMoveWishPersistsOrder(t *testing.T) {
 		t.Fatalf("persisted order = %v, %v", wishes, err)
 	}
 }
+
+func TestPlaceWishChecksExpectedOrder(t *testing.T) {
+	for _, database := range []string{"sqlite", "postgres"} {
+		t.Run(database, func(t *testing.T) {
+			s := openMemoryStore(t)
+			if database == "postgres" {
+				s = openTestStore(t, postgresTestURL(t))
+			}
+			list := createList(t, s, "Alex", "Jul")
+			first := createWish(t, s, list.ID, "First")
+			second := createWish(t, s, list.ID, "Second")
+			wish := createWish(t, s, list.ID, "Focus")
+			expected := []string{first.ID, second.ID, wish.ID}
+			if err := s.MoveWish(t.Context(), list.ID, second.ID, 1); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.PlaceWish(t.Context(), list.ID, wish.ID, 2, expected); !errors.Is(err, ErrInvalid) {
+				t.Fatalf("stale placement = %v, want invalid", err)
+			}
+			after, err := s.Wishes(t.Context(), list.ID)
+			if err != nil || !slices.Equal(after, []Wish{second, first, wish}) {
+				t.Fatalf("stale placement changed order: %v, %v", after, err)
+			}
+			if err := s.PlaceWish(t.Context(), list.ID, wish.ID, 2, []string{second.ID, first.ID, wish.ID}); err != nil {
+				t.Fatal(err)
+			}
+			after, err = s.Wishes(t.Context(), list.ID)
+			if err != nil || !slices.Equal(after, []Wish{second, wish, first}) {
+				t.Fatalf("valid placement = %v, %v", after, err)
+			}
+		})
+	}
+}

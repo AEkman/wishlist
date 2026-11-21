@@ -4,10 +4,23 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 )
 
 // MoveWish moves a wish to a one-based rank, retaining the order of other wishes.
 func (s *Store) MoveWish(ctx context.Context, wishlistID, wishID string, rank int) error {
+	return s.moveWish(ctx, wishlistID, wishID, rank, nil)
+}
+
+// PlaceWish moves a wish only if the complete list still has the expected order.
+func (s *Store) PlaceWish(ctx context.Context, wishlistID, wishID string, rank int, expected []string) error {
+	if len(expected) == 0 {
+		return ErrInvalid
+	}
+	return s.moveWish(ctx, wishlistID, wishID, rank, expected)
+}
+
+func (s *Store) moveWish(ctx context.Context, wishlistID, wishID string, rank int, expected []string) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -15,6 +28,29 @@ func (s *Store) MoveWish(ctx context.Context, wishlistID, wishID string, rank in
 	defer tx.Rollback()
 	if err := s.lockWishlist(ctx, tx, wishlistID); err != nil {
 		return err
+	}
+	if expected != nil {
+		rows, err := tx.QueryContext(ctx, s.bind("SELECT id FROM wishes WHERE wishlist_id = ? ORDER BY position"), wishlistID)
+		if err != nil {
+			return err
+		}
+		var actual []string
+		for rows.Next() {
+			var id string
+			if err := rows.Scan(&id); err != nil {
+				rows.Close()
+				return err
+			}
+			actual = append(actual, id)
+		}
+		readErr := rows.Err()
+		closeErr := rows.Close()
+		if err := errors.Join(readErr, closeErr); err != nil {
+			return err
+		}
+		if !slices.Equal(actual, expected) {
+			return ErrInvalid
+		}
 	}
 	var position, count int
 	err = tx.QueryRowContext(ctx, s.bind(`SELECT position, (SELECT COUNT(*) FROM wishes WHERE wishlist_id = ?) FROM wishes WHERE wishlist_id = ? AND id = ?`), wishlistID, wishlistID, wishID).Scan(&position, &count)
