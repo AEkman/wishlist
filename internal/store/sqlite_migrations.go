@@ -41,7 +41,7 @@ func initialize(db *sql.DB) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	baseline := goose.NewGoMigration(1, &goose.GoFunc{RunTx: migrateSQLiteBaseline}, nil)
-	provider, err := goose.NewProvider(goose.DialectSQLite3, db, nil, goose.WithGoMigrations(baseline))
+	provider, err := goose.NewProvider(goose.DialectSQLite3, db, nil, goose.WithGoMigrations(baseline, goose.NewGoMigration(2, &goose.GoFunc{RunTx: migrateGuidedRankings}, nil)))
 	if err != nil {
 		return err
 	}
@@ -172,4 +172,9 @@ func migrateChildIDs(tx *sql.Tx) error {
 		}
 	}
 	return nil
+}
+
+func migrateGuidedRankings(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE guided_rankings (wishlist_id TEXT PRIMARY KEY REFERENCES wishlists(id), state TEXT NOT NULL)`)
+	return err
 }

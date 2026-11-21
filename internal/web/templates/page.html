@@ -206,6 +206,8 @@
   </div>
 </div>
 {{if .HasPair}}
+  {{with .Guided}}<p class="upload-progress">{{.Placed}} av {{.Total}} önskningar placerade · Placera {{$.GuidedWish.Title}}</p>{{end}}
+ {{template "guided-controls" .}}
   {{if .Focus}}<p class="upload-progress">Rangordna {{.Left.Title}} · högst {{.Remaining}} {{if eq .Remaining 1}}jämförelse{{else}}jämförelser{{end}} kvar</p>{{end}}
   {{if .Upload}}<p class="upload-progress">Placera din nya önskan · högst {{.Remaining}} {{if eq .Remaining 1}}jämförelse{{else}}jämförelser{{end}} kvar</p>{{end}}
   <div class="pair">
@@ -242,6 +244,7 @@
 {{end}}
 
 {{define "upload-fields"}}
+{{with .Guided}}<input type="hidden" name="guided_revision" value="{{.Revision}}">{{end}}
 {{if .Focus}}
 <input type="hidden" name="focus" value="{{.Left.ID}}">
 <input type="hidden" name="low" value="{{.Insertion.Low}}">
@@ -266,14 +269,18 @@
 {{end}}
 
 {{define "ranked"}}
-{{if .RankingResult.ID}}
+{{template "guided-controls" .}}
+{{if or .RankingResult.ID (and .Guided .Guided.Complete)}}
 <section class="ranking-complete{{if .NewFavorite}} ranking-complete--favorite{{end}}" role="status" aria-live="polite">
   {{if .NewFavorite}}
   <div class="ranking-confetti" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
   <img class="ranking-favorite-image" src="/images/{{.RankingResult.ID}}?v={{.RankingResult.ImageRevision}}" alt="{{.RankingResult.Title}}">
   {{end}}
   <div>{{if .NewFavorite}}<h2>Ny favorit!</h2>{{end}}
-    <p>Klart! {{.RankingResult.Title}} fick plats {{.RankingResult.Rank}} av {{len .Wishes}}.</p>
+    {{if and .Guided .Guided.Complete}}
+    {{if not .NewFavorite}}<h2>Rangordningen är klar</h2>{{end}}
+    <p>Rangordningen är klar. Alla {{len .Wishes}} önskningar är placerade.{{if .NewFavorite}} {{.RankingResult.Title}} är din nya favorit på plats 1.{{end}}</p>
+    {{else}}<p>Klart! {{.RankingResult.Title}} fick plats {{.RankingResult.Rank}} av {{len .Wishes}}.</p>{{end}}
   </div>
 </section>
 {{end}}
@@ -511,6 +518,31 @@
     {{end}}
   </ul>
 </nav>
+{{end}}
+{{end}}
+{{end}}
+
+{{define "guided-controls"}}
+{{with .Guided}}
+<div class="actions guided-controls">
+{{if .CanUndo}}<form action="/lists/{{$.Wishlist.ID}}/ranking/undo" method="post" hx-push-url="true">
+ <input type="hidden" name="guided_revision" value="{{.Revision}}">
+ <button class="secondary" type="submit">Ångra senaste valet</button>
+</form>{{end}}
+{{if or .CanUndo .Complete}}<form action="/lists/{{$.Wishlist.ID}}/ranking/restart" method="post" hx-push-url="true">
+ <input type="hidden" name="guided_revision" value="{{.Revision}}">
+ <button class="secondary" type="submit">Börja om</button>
+</form>{{end}}
+</div>
+{{else}}
+{{with .GuidedLink}}
+<div class="actions guided-controls">
+{{if not .Complete}}<a class="button secondary" href="/lists/{{$.Wishlist.ID}}">Fortsätt rangordna</a>{{end}}
+{{if or .CanUndo .Complete}}<form action="/lists/{{$.Wishlist.ID}}/ranking/restart" method="post" hx-push-url="true">
+ <input type="hidden" name="guided_revision" value="{{.Revision}}">
+ <button class="secondary" type="submit">Börja om</button>
+</form>{{end}}
+</div>
 {{end}}
 {{end}}
 {{end}}

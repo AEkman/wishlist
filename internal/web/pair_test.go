@@ -9,23 +9,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-func TestRandomPairDrawsFromWholeWishlist(t *testing.T) {
-	results := []int{11, 10}
-	draw := func(limit int) int {
-		t.Helper()
-		if len(results) == 0 || results[0] >= limit {
-			t.Fatalf("unexpected draw with upper bound %d", limit)
-		}
-		result := results[0]
-		results = results[1:]
-		return result
-	}
-	left, right := randomPair(12, draw)
-	if left != 11 || right != 10 {
-		t.Fatalf("pair = (%d, %d), want (11, 10)", left, right)
-	}
-}
-
 func TestFavoriteChoicesShowPictureAndTitleWithoutDescription(t *testing.T) {
 	db, app := testApp(t)
 	child, err := db.CreateChild(t.Context(), "Alex")

@@ -51,8 +51,7 @@ func (s server) compare(c fiber.Ctx) error {
 	case 1:
 		data.Wish = wishes[0]
 	default:
-		left, right := randomPair(len(wishes), s.draw)
-		data.Left, data.Right, data.HasPair = wishes[left], wishes[right], true
+		return s.guidedComparison(c, data, wishes)
 	}
 	return s.show(c, data)
 }
@@ -135,6 +134,16 @@ func (s server) ranked(c fiber.Ctx) error {
 	data := page{
 		View: "ranked", Title: list.Title, Wishlist: list,
 		ShareURL: baseURL + "/" + list.ShareID, Wishes: inRankOrder(wishes),
+	}
+	if len(wishes) > 1 {
+		progress, err := s.db.GuidedRanking(c.Context(), list.ID)
+		if err != nil {
+			return err
+		}
+		data.GuidedLink = &progress
+		if progress.Restarted {
+			data.Error = "Listan har ändrats. Rangordningen börjar om med den aktuella ordningen."
+		}
 	}
 	if id := c.Query("ranked"); id != "" {
 		index := findWishIndex(wishes, id)

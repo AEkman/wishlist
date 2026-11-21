@@ -238,8 +238,8 @@ func TestPostgresRecordsGooseMigration(t *testing.T) {
 	if err := s.db.QueryRowContext(t.Context(), "SELECT MAX(version_id) FROM goose_db_version WHERE is_applied").Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version != 1 {
-		t.Fatalf("Goose version = %d, want 1", version)
+	if version != 2 {
+		t.Fatalf("Goose version = %d, want 2", version)
 	}
 }
 
@@ -279,7 +279,7 @@ func TestPostgresGooseAdoptsExistingDatabase(t *testing.T) {
 		t.Fatalf("image = %v, %v", image, err)
 	}
 	var version int
-	if err := s.db.QueryRowContext(t.Context(), "SELECT MAX(version_id) FROM goose_db_version WHERE is_applied").Scan(&version); err != nil || version != 1 {
+	if err := s.db.QueryRowContext(t.Context(), "SELECT MAX(version_id) FROM goose_db_version WHERE is_applied").Scan(&version); err != nil || version != 2 {
 		t.Fatalf("Goose version = %d, %v", version, err)
 	}
 }
