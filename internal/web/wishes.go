@@ -40,6 +40,9 @@ func (s server) compare(c fiber.Ctx) error {
 		data.Wish, data.Completed = wish, true
 		return s.show(c, data)
 	}
+	if id := c.Query("focus"); id != "" {
+		return s.focusComparison(c, data, wishes, id)
+	}
 	if id := c.Query("upload"); id != "" && len(wishes) > 1 {
 		return s.uploadComparison(c, data, wishes, id)
 	}

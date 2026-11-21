@@ -48,7 +48,18 @@ func (s server) pick(c fiber.Ctx) error {
 	listID := c.Params("list")
 	winner, loser := c.FormValue("winner"), c.FormValue("loser")
 	next := url.Values{}
+	focused := c.FormValue("focus")
+	if focused != "" {
+		var err error
+		next, err = s.focusPick(c, listID, focused, winner, loser)
+		if err != nil {
+			return err
+		}
+	}
 	if id := c.FormValue("upload"); id != "" {
+		if focused != "" {
+			return store.ErrInvalid
+		}
 		remaining, err := strconv.Atoi(c.FormValue("remaining"))
 		tried := triedIDs(c.Request().PostArgs().PeekMulti("tried"))
 		if err != nil || remaining < 1 || len(tried)+remaining > maxUploadPicks || (id != winner && id != loser) {
@@ -78,6 +89,9 @@ func (s server) pick(c fiber.Ctx) error {
 		return err
 	}
 	path := "/lists/" + listID
+	if focused != "" && len(next) == 0 {
+		path += "/ranked"
+	}
 	if len(next) > 0 {
 		path += "?" + next.Encode()
 	}

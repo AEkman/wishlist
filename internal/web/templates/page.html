@@ -31,6 +31,7 @@
   <script src="/static/child-dialog.js" type="module"></script>
   <script src="/static/share-links.js" type="module"></script>
   <script src="/static/image-preview.js" type="module"></script>
+  <script src="/static/wish-reorder.js" type="module"></script>
   {{if .RankingDebug}}<script src="/static/ranking-debug.js" defer></script>{{end}}
 </head>
 <body hx-status:400:inherited="swap:outerHTML" hx-status:409:inherited="swap:outerHTML" hx-status:422:inherited="swap:outerHTML" hx-boost:inherited="true" hx-target:inherited="#screen" hx-select:inherited="#screen" hx-swap:inherited="outerHTML show:top">
@@ -62,6 +63,7 @@
       <form method="dialog" hx-boost="false"><button type="submit" data-image-close>Stäng</button></form>
     </div>
     <img id="wish-image-large" alt="">
+    <a class="button" id="wish-image-rank" hx-boost="false" hidden>Rangordna denna önskan · 5 jämförelser</a>
   </dialog>
 </body>
 </html>
@@ -204,6 +206,7 @@
   </div>
 </div>
 {{if .HasPair}}
+  {{if .Focus}}<p class="upload-progress">Rangordna {{.Left.Title}} · {{.Remaining}} jämförelser kvar</p>{{end}}
   {{if .Upload}}<p class="upload-progress">Jämför din nya önskan · {{.Remaining}} kvar</p>{{end}}
   <div class="pair">
     <form class="pair-option" hx-swap="outerHTML swap:150ms show:top" action="/lists/{{.Wishlist.ID}}/pick" method="post" hx-push-url="true">
@@ -239,6 +242,11 @@
 {{end}}
 
 {{define "upload-fields"}}
+{{if .Focus}}
+<input type="hidden" name="focus" value="{{.Left.ID}}">
+<input type="hidden" name="remaining" value="{{.Remaining}}">
+{{range .Tried}}<input type="hidden" name="tried" value="{{.}}">{{end}}
+{{end}}
 {{if .Upload}}
 <input type="hidden" name="upload" value="{{.Left.ID}}">
 <input type="hidden" name="remaining" value="{{.Remaining}}">
@@ -278,12 +286,14 @@
   </div>
 </div>
 {{template "visibility-setting" .Wishlist}}
-<p class="ranking-explanation">Önskningarna visas i barnets favoritordning.</p>
+<p class="ranking-explanation">Önskningarna visas i barnets favoritordning. Dra i de tre strecken för att ändra ordningen. Du kan också använda piltangenterna när handtaget är markerat.</p>
 {{if .Wishes}}
-<ol class="ranked-list">
+<p role="status" aria-live="polite" data-reorder-status></p>
+<ol class="ranked-list" data-reorder-url="/lists/{{.Wishlist.ID}}/ranked/move">
   {{range .Wishes}}
-  <li class="ranked-card" data-rank="{{.Rank}}">
-    <a class="wish-image" href="/images/{{.ID}}?v={{.ImageRevision}}" data-image-preview data-image-title="{{.Title}}" aria-label="Visa större bild av {{.Title}}" aria-haspopup="dialog" aria-controls="wish-image-dialog" hx-boost="false">
+  <li class="ranked-card" data-rank="{{.Rank}}" data-wish-id="{{.ID}}">
+    <button class="drag-handle" type="button" data-drag-handle aria-label="Flytta {{.Title}}" title="Dra för att flytta. Använd uppåt- och nedåtpil på tangentbordet."><span aria-hidden="true">☰</span></button>
+    <a class="wish-image" href="/images/{{.ID}}?v={{.ImageRevision}}" {{if gt (len $.Wishes) 1}}data-rank-url="/lists/{{.WishlistID}}?focus={{.ID}}"{{end}} data-image-preview data-image-title="{{.Title}}" aria-label="Visa större bild av {{.Title}}" aria-haspopup="dialog" aria-controls="wish-image-dialog" hx-boost="false">
       <img src="/images/{{.ID}}?v={{.ImageRevision}}" alt="" loading="lazy">
     </a>
     <div class="wish-copy">

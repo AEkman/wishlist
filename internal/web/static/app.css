@@ -1116,3 +1116,42 @@ a.wish-image:focus-visible {
   max-height: calc(100dvh - 8rem);
   object-fit: contain;
 }
+
+[data-reorder-url] .ranked-card {
+  grid-template-columns: 2.75rem var(--ranked-image-width) minmax(0, 1fr);
+}
+
+.drag-handle {
+  align-self: stretch;
+  padding: .25rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.4rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.drag-handle:hover, .drag-handle:focus-visible {
+  background: #f1ece4;
+  color: var(--ink);
+}
+
+.is-dragging {
+  opacity: .6;
+  outline: 2px solid currentColor;
+}
+
+.is-dragging .drag-handle {
+  cursor: grabbing;
+}
+
+#wish-image-rank {
+  margin-top: .75rem;
+}
+
+#wish-image-rank[hidden] {
+  display: none;
+}

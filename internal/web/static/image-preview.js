@@ -2,6 +2,7 @@ export function installImagePreview(doc) {
   const dialog = doc.getElementById('wish-image-dialog');
   const image = doc.getElementById('wish-image-large');
   const title = doc.getElementById('wish-image-title');
+  const rankAction = doc.getElementById('wish-image-rank');
   let opener;
   dialog?.addEventListener('close', () => {
     doc.documentElement.classList.remove('image-preview-open');
@@ -23,6 +24,11 @@ export function installImagePreview(doc) {
     image.src = trigger.href;
     image.alt = trigger.dataset.imageTitle;
     title.textContent = trigger.dataset.imageTitle;
+    if (rankAction) {
+      rankAction.hidden = !trigger.dataset.rankUrl;
+      if (trigger.dataset.rankUrl) rankAction.href = trigger.dataset.rankUrl;
+      else rankAction.removeAttribute('href');
+    }
     dialog.showModal();
     dialog.querySelector('[data-image-close]').focus();
     doc.documentElement.classList.add('image-preview-open');

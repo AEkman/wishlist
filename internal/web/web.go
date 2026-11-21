@@ -44,7 +44,7 @@ type page struct {
 	Children                           []store.Child
 	Wishlists                          []store.Wishlist
 	Wishes                             []rankedWish
-	HasPair, Upload, Completed         bool
+	HasPair, Upload, Completed, Focus  bool
 	Tried                              []string
 	Remaining                          int
 	RankingDebug                       bool
@@ -112,6 +112,7 @@ func newApp(db *store.Store, baseURL string, draw func(int) int, rankingDebug bo
 	app.Get("/lists/:list", s.compare)
 	app.Post("/lists/:list/pick", s.pick)
 	app.Get("/lists/:list/ranked", s.ranked)
+	app.Post("/lists/:list/ranked/move", s.moveWish)
 	app.Get("/lists/:list/wishes/new", s.addForm)
 	app.Post("/lists/:list/wishes/new", s.addWish)
 	app.Get("/lists/:list/wishes/:wish/edit", s.editForm)
@@ -244,7 +245,7 @@ func (s server) asset(c fiber.Ctx) error {
 	switch file {
 	case "app.css":
 		contentType = "text/css; charset=utf-8"
-	case "htmx.min.js", "ranking-debug.js", "wish-camera.js", "child-dialog.js", "share-links.js", "image-preview.js":
+	case "htmx.min.js", "ranking-debug.js", "wish-camera.js", "child-dialog.js", "share-links.js", "image-preview.js", "wish-reorder.js":
 		contentType = "text/javascript; charset=utf-8"
 	case "htmx.LICENSE":
 		contentType = "text/plain; charset=utf-8"
